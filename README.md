@@ -10,6 +10,14 @@ Provider (Alpaca | XTB | Replay)
                   └─ SignalEngine → [execute] target position → RiskManager → Broker.submit_order()
 ```
 
+## Documentation
+
+- [User guide](docs/guide/user/README.md): quick start, everyday use, reading the output, safety, FAQ.
+- [Operator guide](docs/guide/operator/README.md): architecture, configuration and command reference, monitoring, runbook, known gaps.
+- [Tester guide](docs/guide/tester/README.md): running the tests, what blocks a merge, adding tests, exploratory sessions.
+
+Build or check the docs with `make docs` / `make docs-check` (see `docs/README.md`).
+
 ## Layout
 
 | Path | Role |
@@ -19,6 +27,9 @@ Provider (Alpaca | XTB | Replay)
 | `tradesignals/providers/alpaca.py` | `AlpacaData`, `AlpacaBroker` (alpaca-py, IEX feed + paper) |
 | `tradesignals/providers/xtb.py` | `XtbSession`, `XtbData`, `XtbBroker` (raw xAPI JSON/WebSocket) |
 | `tradesignals/providers/fake.py` | `ReplayProvider`, `PaperBroker` — no network, used by tests |
+| `tradesignals/bars.py` | `BarAggregator`: ticks and finer bars become bars of the strategy's timeframe |
+| `tradesignals/indicators.py` | Incremental `SMA`, `EMA`, `RSI` |
+| `tradesignals/config.py` | `env_bool`: strict parsing of `ALPACA_PAPER` / `XTB_DEMO` |
 | `tradesignals/strategies/` | `Strategy` base + `SmaCross`, `RsiReversion` |
 | `tradesignals/engine.py` | `SignalEngine`: wiring, warm-up, execution, kill switch |
 | `tradesignals/risk.py` | Pre-trade guards (notional, position, open positions, daily loss, stale quote) |
@@ -45,6 +56,8 @@ tradesignals --data alpaca --broker paper --symbols NVDA --strategy rsi_reversio
 # XTB demo account end to end
 tradesignals --data xtb --broker xtb --symbols AAPL --strategy sma_cross --execute --qty 1
 ```
+
+`--execute` against a live account (`ALPACA_PAPER=false` / `XTB_DEMO=false`) is refused unless `--allow-live` is also given.
 
 ## Adding a strategy
 

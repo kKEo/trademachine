@@ -6,7 +6,12 @@ Flow per event:
         -> Strategy.on_bar / on_tick -> Signal
         -> SignalSink (log, callbacks)
         -> [execute mode] target position -> OrderRequest -> RiskManager -> Broker
+
+Bar sources: ticks drive a symbol's aggregators only until the provider pushes its own bars
+for that symbol; from then on provider bars win. Alpaca pushes both quotes and 1-minute bars,
+and feeding both into one aggregator would hand every bucket to the strategy twice.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,7 +23,17 @@ from typing import Awaitable
 from .bars import BarAggregator
 from .interfaces import Broker, MarketDataProvider
 from .models import (
-    Account, Bar, Order, OrderRequest, Position, Side, Signal, SignalKind, Tick, Timeframe, utcnow,
+    Account,
+    Bar,
+    Order,
+    OrderRequest,
+    Position,
+    Side,
+    Signal,
+    SignalKind,
+    Tick,
+    Timeframe,
+    utcnow,
 )
 from .risk import RiskManager
 from .strategies import Strategy
@@ -26,6 +41,7 @@ from .strategies import Strategy
 log = logging.getLogger("tradesignals.engine")
 
 SignalCallback = Callable[[Signal], Awaitable[None] | None]
+TickCallback = Callable[[Tick], None]
 
 
 class SignalEngine:
@@ -39,6 +55,7 @@ class SignalEngine:
         default_qty: float = 1.0,
         on_signal: SignalCallback | None = None,
         warmup: bool = True,
+        on_tick: TickCallback | None = None,
     ):
         self.data = data
         self.strategies = strategies
@@ -47,6 +64,7 @@ class SignalEngine:
         self.execute = execute and broker is not None
         self.default_qty = default_qty
         self.on_signal = on_signal
+        self.on_tick = on_tick  # e.g. feed PaperBroker.mark; called for every tick before strategies
         self.warmup = warmup
 
         self.symbols = sorted({s for st in strategies for s in st.symbols})
@@ -54,44 +72,60 @@ class SignalEngine:
         self.signals: list[Signal] = []
         self.orders: list[Order] = []
         self._aggs: dict[tuple[str, Timeframe], BarAggregator] = {}
+        self._ticks_build_bars = not getattr(data, "pushes_bars", False)
+        self._bar_symbols: set[str] = set()  # symbols seen pushing bars (safety net for undeclared providers)
         self._positions: dict[str, Position] = {}
         self._account: Account | None = None
         self._stop = asyncio.Event()
 
     # ------------------------------------------------------------------ lifecycle
     async def run(self) -> None:
-        await self.data.connect()
-        if self.broker:
-            await self.broker.connect()
-            await self._refresh_broker_state()
-        if self.warmup:
-            await self._warmup()
-        await self.data.subscribe(self.symbols)
-        log.info("engine running: symbols=%s execute=%s", self.symbols, self.execute)
-
-        tasks = [asyncio.create_task(self._consume_data())]
-        if self.broker:
-            tasks.append(asyncio.create_task(self._consume_order_updates()))
+        tasks: list[asyncio.Task] = []
         try:
+            await self.data.connect()
+            if self.broker:
+                await self.broker.connect()
+                await self._refresh_broker_state()
+            if self.warmup:
+                await self._warmup()
+            await self.data.subscribe(self.symbols)
+            log.info(
+                "engine running: symbols=%s strategies=%s execute=%s qty=%s",
+                self.symbols,
+                [st.name for st in self.strategies],
+                self.execute,
+                self.default_qty,
+            )
+
+            tasks.append(asyncio.create_task(self._consume_data()))
+            if self.broker:
+                tasks.append(asyncio.create_task(self._consume_order_updates()))
             await self._stop.wait()
         finally:
             for t in tasks:
                 t.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            await self.data.close()
-            if self.broker:
-                await self.broker.close()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                await self.data.close()
+            finally:
+                if self.broker:
+                    await self.broker.close()
+            log.info("engine stopped")
 
     def stop(self) -> None:
         self._stop.set()
 
     async def kill_switch(self) -> None:
-        """Cancel everything, halt risk, stop the loop."""
+        """Halt risk, cancel open orders, stop the loop. Positions are NOT flattened."""
+        log.warning("KILL SWITCH: halting risk, cancelling open orders, stopping")
         if self.risk:
             self.risk.halted, self.risk.halt_reason = True, "kill switch"
-        if self.broker:
-            await self.broker.cancel_all()
-        self.stop()
+        try:
+            if self.broker:
+                await self.broker.cancel_all()
+        finally:
+            self.stop()
 
     # ------------------------------------------------------------------ warm-up
     async def _warmup(self) -> None:
@@ -105,21 +139,36 @@ class SignalEngine:
                 except Exception as e:  # noqa: BLE001
                     log.warning("warmup %s/%s failed: %s", st.name, sym, e)
                     continue
-                for b in bars[-st.warmup_bars:]:
+                for b in bars[-st.warmup_bars :]:
                     st.on_bar(b)  # signals during warm-up are discarded
-                log.info("warmup %s/%s: %d bars", st.name, sym, len(bars))
+                if len(bars) < st.warmup_bars:
+                    log.warning(
+                        "warmup %s/%s: only %d of %d bars available; strategy starts cold",
+                        st.name,
+                        sym,
+                        len(bars),
+                        st.warmup_bars,
+                    )
+                else:
+                    log.info("warmup %s/%s: %d bars", st.name, sym, len(bars))
 
     # ------------------------------------------------------------------ data loop
     async def _consume_data(self) -> None:
-        async for ev in self.data.stream():
-            try:
-                if isinstance(ev, Tick):
-                    await self._on_tick(ev)
-                elif isinstance(ev, Bar):
-                    await self._on_bar(ev)
-            except Exception:  # noqa: BLE001
-                log.exception("error handling %s", ev)
-        self.stop()
+        try:
+            async for ev in self.data.stream():
+                try:
+                    if isinstance(ev, Tick):
+                        await self._on_tick(ev)
+                    elif isinstance(ev, Bar):
+                        await self._on_bar(ev)
+                except Exception:  # noqa: BLE001
+                    log.exception("error handling %s", ev)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            log.exception("data stream failed; stopping engine")
+        finally:
+            self.stop()  # end of stream or failure: without data there is nothing to do
 
     def _agg(self, symbol: str, tf: Timeframe) -> BarAggregator:
         key = (symbol, tf)
@@ -129,12 +178,17 @@ class SignalEngine:
 
     async def _on_tick(self, tick: Tick) -> None:
         self.last_tick[tick.symbol] = tick
+        if self.on_tick:
+            self.on_tick(tick)
+        ticks_drive_bars = self._ticks_build_bars and tick.symbol not in self._bar_symbols
         for st in self.strategies:
             if tick.symbol not in st.symbols:
                 continue
             sig = st.on_tick(tick)
             if sig:
                 await self._emit(sig)
+            if not ticks_drive_bars:
+                continue
             done = self._agg(tick.symbol, st.timeframe).on_tick(tick)
             if done:
                 sig = st.on_bar(done)
@@ -142,6 +196,10 @@ class SignalEngine:
                     await self._emit(sig)
 
     async def _on_bar(self, bar: Bar) -> None:
+        if bar.symbol not in self._bar_symbols:
+            self._bar_symbols.add(bar.symbol)
+            if self._ticks_build_bars:
+                log.debug("%s: provider pushes bars; ticks no longer build bars for it", bar.symbol)
         for st in self.strategies:
             if bar.symbol not in st.symbols:
                 continue
@@ -154,8 +212,7 @@ class SignalEngine:
     # ------------------------------------------------------------------ signals
     async def _emit(self, sig: Signal) -> None:
         self.signals.append(sig)
-        log.info("SIGNAL %s %s %s strength=%.2f %s", sig.strategy, sig.symbol, sig.kind.value,
-                 sig.strength, sig.reason)
+        log.info("SIGNAL %s %s %s strength=%.2f %s", sig.strategy, sig.symbol, sig.kind.value, sig.strength, sig.reason)
         if self.on_signal:
             r = self.on_signal(sig)
             if asyncio.iscoroutine(r):
@@ -173,19 +230,20 @@ class SignalEngine:
             SignalKind.SHORT: -self.default_qty * sig.strength,
             SignalKind.FLAT: 0.0,
         }[sig.kind]
-        delta = target - cur_qty
+        delta = round(target - cur_qty, 4)
         if abs(delta) < 1e-9:
             log.info("no-op: %s already at %.2f", sig.symbol, cur_qty)
             return
         req = OrderRequest(
             symbol=sig.symbol,
             side=Side.BUY if delta > 0 else Side.SELL,
-            qty=abs(round(delta, 4)),
+            qty=abs(delta),
             note=f"{sig.strategy}:{sig.kind.value}",
         )
         if self.risk:
-            ok, why = self.risk.check(req, self.last_tick.get(sig.symbol),
-                                      list(self._positions.values()), self._account)
+            ok, why = self.risk.check(
+                req, self.last_tick.get(sig.symbol), list(self._positions.values()), self._account
+            )
             if not ok:
                 log.warning("RISK REJECT %s %s %s: %s", req.side.value, req.qty, req.symbol, why)
                 return
@@ -195,8 +253,15 @@ class SignalEngine:
             log.exception("submit failed for %s", req)
             return
         self.orders.append(order)
-        log.info("ORDER %s %s %.4f %s -> %s (%s)", order.source, order.side.value, order.qty,
-                 order.symbol, order.status.value, order.id)
+        log.info(
+            "ORDER %s %s %.4f %s -> %s (%s)",
+            order.source,
+            order.side.value,
+            order.qty,
+            order.symbol,
+            order.status.value,
+            order.id,
+        )
 
     async def _refresh_broker_state(self) -> None:
         assert self.broker is not None
@@ -208,8 +273,20 @@ class SignalEngine:
 
     async def _consume_order_updates(self) -> None:
         assert self.broker is not None
-        async for o in self.broker.order_updates():
-            log.info("ORDER UPDATE %s %s %s filled=%.4f @ %s", o.symbol, o.side.value,
-                     o.status.value, o.filled_qty, o.avg_fill_price)
-            if o.status.is_terminal:
-                await self._refresh_broker_state()
+        try:
+            async for o in self.broker.order_updates():
+                log.info(
+                    "ORDER UPDATE %s %s %s filled=%.4f @ %s",
+                    o.symbol,
+                    o.side.value,
+                    o.status.value,
+                    o.filled_qty,
+                    o.avg_fill_price,
+                )
+                if o.status.is_terminal:
+                    await self._refresh_broker_state()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            # Positions are re-read before every order anyway, so trading can continue.
+            log.exception("order update stream failed; continuing without push updates")

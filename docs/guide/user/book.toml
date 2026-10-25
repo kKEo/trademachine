@@ -1,0 +1,13 @@
+[book]
+title = "tradesignals User guide"
+description = "Getting started with the tradesignals trade-signal engine: quick start, everyday use, safety, FAQ."
+authors = ["Krzysztof Maziarz"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../../../site/user"
+create-missing = false
+
+[output.html]
+site-url = "/tradesignals/user/"

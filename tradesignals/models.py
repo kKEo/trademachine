@@ -3,6 +3,7 @@
 Everything that crosses the provider boundary is one of these. Adapters translate
 provider payloads into them and never leak provider types upward.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

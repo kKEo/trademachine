@@ -1,4 +1,5 @@
 """Provider registry. Adding a provider = implement the interfaces, register it here."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,26 +9,31 @@ from ..interfaces import Broker, MarketDataProvider
 
 def _alpaca_data() -> MarketDataProvider:
     from .alpaca import AlpacaData
+
     return AlpacaData()
 
 
 def _alpaca_broker() -> Broker:
     from .alpaca import AlpacaBroker
+
     return AlpacaBroker()
 
 
 def _xtb_data() -> MarketDataProvider:
     from .xtb import XtbData
+
     return XtbData()
 
 
 def _xtb_broker() -> Broker:
     from .xtb import XtbBroker
+
     return XtbBroker()
 
 
 def _paper_broker() -> Broker:
     from .fake import PaperBroker
+
     return PaperBroker()
 
 

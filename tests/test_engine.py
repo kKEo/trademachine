@@ -1,27 +1,14 @@
-import math
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
-import pytest
+from helpers import bars, now_floor, ticks, wave
 
 from tradesignals.bars import BarAggregator
 from tradesignals.engine import SignalEngine
 from tradesignals.interfaces import SymbolMapper
-from tradesignals.models import Bar, SignalKind, Tick, Timeframe
+from tradesignals.models import SignalKind, Timeframe
 from tradesignals.providers.fake import PaperBroker, ReplayProvider
 from tradesignals.risk import RiskLimits, RiskManager
 from tradesignals.strategies import SmaCross
-
-T0 = datetime(2026, 10, 21, 14, 30, tzinfo=timezone.utc)
-
-
-def ticks(symbol: str, prices: list[float], step_sec: int = 60) -> list[Tick]:
-    return [Tick(symbol, p - 0.01, p + 0.01, T0 + timedelta(seconds=i * step_sec), "test")
-            for i, p in enumerate(prices)]
-
-
-def wave(n: int) -> list[float]:
-    # down then up then down: produces a golden cross then a death cross
-    return [100 + 10 * math.sin(i / 8) for i in range(n)]
 
 
 def test_symbol_mapper_roundtrip():
@@ -35,9 +22,9 @@ def test_symbol_mapper_roundtrip():
 def test_bar_aggregator_rolls_over():
     agg = BarAggregator("AAPL", Timeframe.M1)
     out = [agg.on_tick(t) for t in ticks("AAPL", [10, 11, 9, 12], step_sec=20)]
-    bars = [b for b in out if b]
-    assert len(bars) == 1
-    assert (bars[0].open, bars[0].high, bars[0].low, bars[0].close) == (10, 11, 9, 9)
+    bars_out = [b for b in out if b]
+    assert len(bars_out) == 1
+    assert (bars_out[0].open, bars_out[0].high, bars_out[0].low, bars_out[0].close) == (10, 11, 9, 9)
 
 
 async def test_signal_only_mode_emits_without_orders():
@@ -51,26 +38,26 @@ async def test_signal_only_mode_emits_without_orders():
 
 
 async def test_execute_mode_trades_paper_broker():
-    tk = ticks("AAPL", wave(120))
-    data = ReplayProvider(tk)
+    data = ReplayProvider(ticks("AAPL", wave(120)))
     broker = PaperBroker()
     strat = SmaCross(["AAPL"], fast=5, slow=15)
     risk = RiskManager(RiskLimits(max_order_notional=10_000, max_quote_age_sec=10**9))
-    eng = SignalEngine(data, [strat], broker=broker, risk=risk, execute=True, default_qty=3, warmup=False)
-
-    orig = eng._on_tick
-
-    async def on_tick(t):
-        broker.mark(t.symbol, t.price)
-        await orig(t)
-    eng._on_tick = on_tick
-
+    eng = SignalEngine(
+        data,
+        [strat],
+        broker=broker,
+        risk=risk,
+        execute=True,
+        default_qty=3,
+        warmup=False,
+        on_tick=lambda t: broker.mark(t.symbol, t.price),
+    )
     await eng.run()
-    # a leading FLAT with no position is a no-op; afterwards LONG/FLAT alternate -> buy/sell
+    # the first signal of the wave is FLAT with no position (a no-op); afterwards LONG/FLAT alternate
     assert len(eng.orders) >= 2
     sides = [o.side.value for o in eng.orders]
     assert sides[0] == "buy" and all(a != b for a, b in zip(sides, sides[1:]))
-    assert all(o.qty == 3 for o in eng.orders)
+    assert all(o.qty == 3 and o.status.value == "filled" for o in eng.orders)
 
 
 async def test_risk_rejects_oversized_order():
@@ -78,20 +65,25 @@ async def test_risk_rejects_oversized_order():
     broker = PaperBroker()
     strat = SmaCross(["AAPL"], fast=5, slow=15)
     risk = RiskManager(RiskLimits(max_order_notional=50, max_quote_age_sec=10**9))  # ~$100/share
-    eng = SignalEngine(data, [strat], broker=broker, risk=risk, execute=True, default_qty=1, warmup=False)
-    orig = eng._on_tick
-
-    async def on_tick(t):
-        broker.mark(t.symbol, t.price)
-        await orig(t)
-    eng._on_tick = on_tick
+    eng = SignalEngine(
+        data,
+        [strat],
+        broker=broker,
+        risk=risk,
+        execute=True,
+        default_qty=1,
+        warmup=False,
+        on_tick=lambda t: broker.mark(t.symbol, t.price),
+    )
     await eng.run()
     assert eng.signals and eng.orders == []
 
 
 async def test_warmup_uses_history():
-    hist = [Bar("AAPL", Timeframe.M1, p, p, p, p, 0, T0 - timedelta(minutes=200 - i), "h")
-            for i, p in enumerate(wave(200))]
+    # The warm-up window is anchored to the wall clock (16 bars * 60 s * 3 = 48 min back), so the
+    # history must end "now": ending at a fixed date made this test fail once that date passed.
+    end = now_floor()
+    hist = bars("AAPL", wave(200), start=end - timedelta(minutes=200))
     data = ReplayProvider([], history={"AAPL": hist})
     strat = SmaCross(["AAPL"], fast=5, slow=15)
     eng = SignalEngine(data, [strat], warmup=True)

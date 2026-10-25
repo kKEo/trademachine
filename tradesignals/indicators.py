@@ -1,4 +1,5 @@
 """Small, dependency-free incremental indicators."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -54,17 +55,17 @@ class RSI:
             return None
         ch = close - self._prev
         self._prev = close
-        g, l = max(ch, 0.0), max(-ch, 0.0)
+        gain, loss = max(ch, 0.0), max(-ch, 0.0)
         if self._avg_gain is None:
-            self._seed_g.append(g)
-            self._seed_l.append(l)
+            self._seed_g.append(gain)
+            self._seed_l.append(loss)
             if len(self._seed_g) < self.n:
                 return None
             self._avg_gain = sum(self._seed_g) / self.n
             self._avg_loss = sum(self._seed_l) / self.n
         else:
-            self._avg_gain = (self._avg_gain * (self.n - 1) + g) / self.n
-            self._avg_loss = (self._avg_loss * (self.n - 1) + l) / self.n
+            self._avg_gain = (self._avg_gain * (self.n - 1) + gain) / self.n
+            self._avg_loss = (self._avg_loss * (self.n - 1) + loss) / self.n
         if self._avg_loss == 0:
             self.value = 100.0
         else:

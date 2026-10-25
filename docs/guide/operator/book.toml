@@ -1,0 +1,13 @@
+[book]
+title = "tradesignals Operator guide"
+description = "How the engine works inside, how to install, configure, monitor and operate it, and what is still missing."
+authors = ["Krzysztof Maziarz"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../../../site/operator"
+create-missing = false
+
+[output.html]
+site-url = "/tradesignals/operator/"

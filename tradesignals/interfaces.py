@@ -2,6 +2,7 @@
 
 The engine only ever talks to these two classes and the SymbolMapper.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -32,6 +33,9 @@ class SymbolMapper:
 
 class MarketDataProvider(ABC):
     name: str = "base"
+    #: True when the provider pushes its own bars (Alpaca does). The engine then never builds
+    #: bars from ticks for this provider, so a strategy sees each bucket exactly once.
+    pushes_bars: bool = False
 
     @abstractmethod
     async def connect(self) -> None: ...
@@ -56,6 +60,10 @@ class MarketDataProvider(ABC):
 
 class Broker(ABC):
     name: str = "base"
+    #: True only when the adapter knows it targets a paper/demo account. Defaults to False so a
+    #: forgotten attribute fails closed: the CLI refuses --execute against a broker whose
+    #: ``paper`` is False unless --allow-live is given.
+    paper: bool = False
 
     @abstractmethod
     async def connect(self) -> None: ...

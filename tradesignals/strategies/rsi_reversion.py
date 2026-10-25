@@ -10,8 +10,9 @@ class RsiReversion(Strategy):
 
     name = "rsi_reversion"
 
-    def __init__(self, symbols, n: int = 14, oversold: float = 30, exit: float = 55,
-                 timeframe: Timeframe = Timeframe.M5):
+    def __init__(
+        self, symbols, n: int = 14, oversold: float = 30, exit: float = 55, timeframe: Timeframe = Timeframe.M5
+    ):
         super().__init__(symbols)
         self.timeframe = timeframe
         self.warmup_bars = n * 3
@@ -27,9 +28,14 @@ class RsiReversion(Strategy):
             return None
         if not self._in[bar.symbol] and v < self.oversold:
             self._in[bar.symbol] = True
-            return Signal(bar.symbol, SignalKind.LONG, self.name, bar.start,
-                          strength=min(1.0, (self.oversold - v) / self.oversold + 0.5),
-                          reason=f"rsi={v:.1f}")
+            return Signal(
+                bar.symbol,
+                SignalKind.LONG,
+                self.name,
+                bar.start,
+                strength=min(1.0, (self.oversold - v) / self.oversold + 0.5),
+                reason=f"rsi={v:.1f}",
+            )
         if self._in[bar.symbol] and v > self.exit:
             self._in[bar.symbol] = False
             return Signal(bar.symbol, SignalKind.FLAT, self.name, bar.start, reason=f"rsi={v:.1f}")

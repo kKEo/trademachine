@@ -1,5 +1,6 @@
 """Strategy contract. A strategy is pure: it receives bars/ticks and may emit a Signal.
 It never touches a broker and never knows which provider the data came from."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

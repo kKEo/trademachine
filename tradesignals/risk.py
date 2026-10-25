@@ -1,4 +1,5 @@
 """Pre-trade risk guards. These run in *our* code, before anything reaches a broker."""
+
 from __future__ import annotations
 
 import os

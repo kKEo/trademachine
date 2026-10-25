@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="900" height="300" role="img" aria-labelledby="t">
+  <title id="t">From a signal to an order and back</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="300" rx="12" fill="#f7f8fa"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#1f2937" text-anchor="middle">
+    <rect x="20" y="40" width="150" height="70" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="95" y="68" font-weight="600">Signal</text>
+    <text x="95" y="88" fill="#5b6472" font-size="12">LONG / FLAT, strength</text>
+
+    <rect x="200" y="40" width="150" height="70" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="275" y="62" font-weight="600">Target position</text>
+    <text x="275" y="80" fill="#5b6472" font-size="12">qty x strength, or 0</text>
+    <text x="275" y="97" fill="#5b6472" font-size="12">delta = target - held</text>
+
+    <rect x="380" y="40" width="150" height="70" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="455" y="62" font-weight="600">OrderRequest</text>
+    <text x="455" y="80" fill="#5b6472" font-size="12">market, DAY</text>
+    <text x="455" y="97" fill="#5b6472" font-size="12">qty = |delta|</text>
+
+    <rect x="560" y="40" width="150" height="70" rx="10" fill="#fff4e5" stroke="#b45309"/>
+    <text x="635" y="62" font-weight="600">RiskManager.check</text>
+    <text x="635" y="80" fill="#92400e" font-size="12">7 rules, first failure wins</text>
+    <text x="635" y="97" fill="#92400e" font-size="12">reject -> log, drop</text>
+
+    <rect x="740" y="40" width="140" height="70" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="810" y="68" font-weight="600">Broker.submit_order</text>
+    <text x="810" y="88" fill="#5b6472" font-size="12">Order returned</text>
+
+    <line x1="170" y1="75" x2="198" y2="75" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="350" y1="75" x2="378" y2="75" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="530" y1="75" x2="558" y2="75" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="710" y1="75" x2="738" y2="75" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="200" y="180" width="150" height="60" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="275" y="205" font-weight="600">no-op</text>
+    <text x="275" y="224" fill="#5b6472" font-size="12">|delta| below 1e-9</text>
+    <line x1="275" y1="110" x2="275" y2="178" stroke="#6b7280" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+    <rect x="560" y="180" width="150" height="60" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="635" y="205" font-weight="600">RISK REJECT logged</text>
+    <text x="635" y="224" fill="#5b6472" font-size="12">signal dropped, no retry</text>
+    <line x1="635" y1="110" x2="635" y2="178" stroke="#b45309" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+    <rect x="740" y="180" width="140" height="60" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="810" y="205" font-weight="600">order_updates</text>
+    <text x="810" y="224" fill="#5b6472" font-size="12">terminal -> refresh</text>
+    <line x1="810" y1="110" x2="810" y2="178" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="20" y="180" width="150" height="60" rx="10" fill="#eef2f7" stroke="#6b7280"/>
+    <text x="95" y="205" font-weight="600">positions, account</text>
+    <text x="95" y="224" fill="#5b6472" font-size="12">re-read before every order</text>
+    <line x1="738" y1="210" x2="172" y2="210" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

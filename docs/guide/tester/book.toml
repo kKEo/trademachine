@@ -1,0 +1,13 @@
+[book]
+title = "tradesignals Tester guide"
+description = "How every change to tradesignals is checked: running the tests, what blocks a merge, adding tests, exploring by hand."
+authors = ["Krzysztof Maziarz"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../../../site/tester"
+create-missing = false
+
+[output.html]
+site-url = "/tradesignals/tester/"

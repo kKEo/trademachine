@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" role="img" aria-labelledby="t">
+  <title id="t">Which events build bars: ticks until the provider pushes bars, then provider bars only</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="260" rx="12" fill="#f7f8fa"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#1f2937">
+    <text x="20" y="34" font-weight="600">XTB (ticks only, pushes_bars = False)</text>
+    <line x1="20" y1="70" x2="880" y2="70" stroke="#6b7280" stroke-width="2"/>
+    <g fill="#2563eb">
+      <circle cx="60" cy="70" r="4"/><circle cx="95" cy="70" r="4"/><circle cx="140" cy="70" r="4"/><circle cx="190" cy="70" r="4"/>
+      <circle cx="260" cy="70" r="4"/><circle cx="300" cy="70" r="4"/><circle cx="350" cy="70" r="4"/><circle cx="400" cy="70" r="4"/>
+      <circle cx="470" cy="70" r="4"/><circle cx="520" cy="70" r="4"/><circle cx="560" cy="70" r="4"/>
+    </g>
+    <line x1="230" y1="55" x2="230" y2="85" stroke="#6b7280"/><line x1="440" y1="55" x2="440" y2="85" stroke="#6b7280"/><line x1="650" y1="55" x2="650" y2="85" stroke="#6b7280"/>
+    <text x="230" y="102" text-anchor="middle" fill="#5b6472" font-size="12">14:31:00 bar 14:30 emitted</text>
+    <text x="440" y="102" text-anchor="middle" fill="#5b6472" font-size="12">14:32:00 bar 14:31 emitted</text>
+    <text x="650" y="102" text-anchor="middle" fill="#5b6472" font-size="12">14:33:00 bar 14:32 emitted</text>
+    <text x="740" y="74" fill="#5b6472" font-size="12">ticks (mid price, volume 0) build each bucket</text>
+
+    <text x="20" y="150" font-weight="600">Alpaca (quotes and 1-minute bars, pushes_bars = True)</text>
+    <line x1="20" y1="186" x2="880" y2="186" stroke="#6b7280" stroke-width="2"/>
+    <g fill="#9aa4b2">
+      <circle cx="60" cy="186" r="4"/><circle cx="95" cy="186" r="4"/><circle cx="140" cy="186" r="4"/><circle cx="190" cy="186" r="4"/>
+      <circle cx="260" cy="186" r="4"/><circle cx="300" cy="186" r="4"/><circle cx="350" cy="186" r="4"/><circle cx="400" cy="186" r="4"/>
+      <circle cx="470" cy="186" r="4"/><circle cx="520" cy="186" r="4"/><circle cx="560" cy="186" r="4"/>
+    </g>
+    <rect x="236" y="172" width="22" height="28" rx="4" fill="#fff4e5" stroke="#b45309"/>
+    <rect x="446" y="172" width="22" height="28" rx="4" fill="#fff4e5" stroke="#b45309"/>
+    <rect x="656" y="172" width="22" height="28" rx="4" fill="#fff4e5" stroke="#b45309"/>
+    <text x="247" y="222" text-anchor="middle" fill="#92400e" font-size="12">bar 14:30 arrives ~14:31:01</text>
+    <text x="457" y="222" text-anchor="middle" fill="#92400e" font-size="12">bar 14:31</text>
+    <text x="667" y="222" text-anchor="middle" fill="#92400e" font-size="12">bar 14:32</text>
+    <text x="740" y="190" fill="#5b6472" font-size="12">ticks update last_tick only;</text>
+    <text x="740" y="206" fill="#5b6472" font-size="12">provider bars are the only bar source</text>
+    <text x="20" y="250" fill="#5b6472" font-size="12">A bar is emitted when an event for a later bucket arrives. Events for an already closed bucket are dropped and counted.</text>
+  </g>
+</svg>
