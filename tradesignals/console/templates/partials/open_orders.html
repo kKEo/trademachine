@@ -1,0 +1,25 @@
+{% if open_orders %}
+<table>
+  <thead>
+    <tr><th scope="col">Sent</th><th scope="col">Symbol</th><th scope="col">Side</th><th scope="col" class="num">Filled</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+  </thead>
+  <tbody>
+    {% for o in open_orders %}
+    <tr>
+      <td class="fig" title="{{ o.ts | stamp }}">{{ o.ts | clock }}</td>
+      <th scope="row"><a href="/markets/{{ o.symbol }}">{{ o.symbol }}</a></th>
+      <td><span class="side side-{{ o.side }}">{{ o.side }}</span></td>
+      <td class="num fig">{{ o.filled_qty | qty }} / {{ o.qty | qty }}</td>
+      <td><span class="ostatus ostatus-{{ o.status }}">{{ o.status | replace("_", " ") }}</span></td>
+      <td class="num">
+        {% if access.trading %}
+        <form data-action="/api/actions/cancel"><input type="hidden" name="order_id" value="{{ o.id }}"><button type="submit" class="quiet">Cancel order</button></form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No orders are waiting to fill.</p>
+{% endif %}

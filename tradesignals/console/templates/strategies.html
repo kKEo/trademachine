@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Strategies{% endblock %}
+{% block main %}
+<h1>Strategies</h1>
+<p class="lede">A strategy watches bars for its symbols and raises signals. Pausing one keeps it watching but ignores its signals; removing one stops it. Neither sells anything: positions stay as they are.</p>
+
+<section class="panel" aria-labelledby="h-running">
+  <h2 id="h-running">Running now</h2>
+  <div hx-get="/partials/strategies" hx-trigger="live-status from:body, live-refresh from:body">
+    {% include "partials/strategies.html" %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-add">
+  <h2 id="h-add">Start a strategy</h2>
+  {% if access.trading %}
+  <div class="controls">
+    {% for c in catalog %}
+    <form class="control" data-action="/api/actions/strategies/add" aria-label="Start {{ c.name }}">
+      <h3>{{ c.name }}</h3>
+      <p>{{ c.about }}</p>
+      <input type="hidden" name="strategy" value="{{ c.name }}">
+      <fieldset class="checks">
+        <legend>Symbols</legend>
+        {% for sym in symbols %}<label><input type="checkbox" name="symbols" value="{{ sym }}"> {{ sym }}</label>{% endfor %}
+      </fieldset>
+      <div class="fields">
+        <label>Bar size
+          <select name="timeframe">{% for t in timeframes %}<option value="{{ t }}" {{ "selected" if t == c.timeframe }}>{{ t }}</option>{% endfor %}</select>
+        </label>
+        {% for p in c.params %}
+        <label>{{ p.name }}
+          <input type="number" name="{{ p.name }}" value="{{ p.default | qty }}" min="{{ 1 if p.whole else 0 }}" step="{{ 1 if p.whole else 'any' }}" required>
+        </label>
+        {% endfor %}
+      </div>
+      <button type="submit">Start {{ c.name }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  <p class="empty">A new strategy first replays recent bars so its indicators are ready, then trades the symbols this session already receives. Other symbols need a restart with <code>--symbols</code>.</p>
+  {% elif not access.configured %}
+  <p class="empty">This console is view only. Set <code>CONSOLE_TOKEN</code> in <code>.env</code> and restart the engine to manage strategies here.</p>
+  {% elif not access.unlocked %}
+  <p class="empty">Unlock actions with the console token (bottom of the menu) to manage strategies.</p>
+  {% else %}
+  <p class="empty">{{ access.trade_blocked }}</p>
+  {% endif %}
+</section>
+{% endblock %}

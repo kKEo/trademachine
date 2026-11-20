@@ -1,0 +1,50 @@
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Symbol</th>
+      <th scope="col">Recent bars</th>
+      <th scope="col" class="num">Last</th>
+      <th scope="col" class="num">Change</th>
+      <th scope="col">Trend</th>
+      <th scope="col">Momentum (RSI)</th>
+      <th scope="col" class="num">Held</th>
+      <th scope="col">Watched by</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    {% set st = r.state %}
+    <tr>
+      <th scope="row"><a href="/markets/{{ r.symbol }}">{{ r.symbol }}</a> <span class="tag">{{ r.timeframe }}</span></th>
+      <td>
+        {% if r.spark %}
+        <svg class="spark {{ r.spark_tone }}" viewBox="0 0 120 28" width="120" height="28" role="img" aria-label="{{ r.symbol }} closing prices, last {{ st.bars if st.bars < 60 else 60 }} bars">
+          <polyline points="{{ r.spark }}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+        </svg>
+        {% else %}<span class="sub">no bars yet</span>{% endif %}
+      </td>
+      <td class="num fig">{{ r.quote.price | money }}</td>
+      <td class="num fig {{ st.change_pct | tone }}" title="Over the last {{ st.bars }} {{ r.timeframe }} bars">{{ st.change_pct | pct }}</td>
+      <td>
+        {% if st.trend == "up" %}<span class="kind kind-long" title="The {{ st.fast }}-bar average is above the {{ st.slow }}-bar average">Rising</span>
+        {% elif st.trend == "down" %}<span class="kind kind-short" title="The {{ st.fast }}-bar average is below the {{ st.slow }}-bar average">Falling</span>
+        {% elif st.trend == "flat" %}<span class="kind kind-flat">Flat</span>
+        {% else %}<span class="sub" title="Needs {{ st.slow }} bars">not enough bars</span>{% endif %}
+        {% if st.spread_pct is not none %}<span class="fig sub">{{ st.spread_pct | pct }}</span>{% endif %}
+      </td>
+      <td>
+        {% if st.rsi is not none %}
+        <span class="fig">{{ "%.0f" | format(st.rsi) }}</span>
+        <span class="{{ 'outcome warn' if st.rsi_zone != 'neutral' else 'sub' }}">{{ st.rsi_zone }}</span>
+        {% else %}<span class="sub">not enough bars</span>{% endif %}
+      </td>
+      <td class="num fig">{% if r.position %}{{ r.position.qty | qty }}{% else %}<span class="sub">{{ "—" }}</span>{% endif %}</td>
+      <td>{{ r.strategies | join(", ") or "nothing" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No symbols are being watched. Start the engine with <code>--symbols AAPL,MSFT</code>.</p>
+{% endif %}

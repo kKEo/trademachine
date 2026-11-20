@@ -1,0 +1,6 @@
+{%- if s.outcome == "order" -%}<span class="outcome ok" title="{{ s.outcome_detail }}">Order sent</span>
+{%- elif s.outcome == "no_op" -%}<span class="outcome" title="{{ s.outcome_detail }}">Nothing to do</span>
+{%- elif s.outcome == "risk_reject" -%}<span class="outcome warn" title="{{ s.outcome_detail }}">Blocked by risk</span>
+{%- elif s.outcome == "submit_failed" -%}<span class="outcome bad" title="{{ s.outcome_detail }}">Order failed</span>
+{%- else -%}<span class="outcome">Not traded</span>
+{%- endif -%}

@@ -1,0 +1,17 @@
+{% if logs %}
+<table class="log">
+  <thead><tr><th scope="col">Time</th><th scope="col">Level</th><th scope="col">From</th><th scope="col">Message</th></tr></thead>
+  <tbody>
+    {% for r in logs %}
+    <tr class="lvl-{{ r.level | lower }}">
+      <td class="fig" title="{{ r.ts | stamp }}">{{ r.ts | clock }}</td>
+      <td>{{ r.level | lower }}</td>
+      <td class="sub">{{ r.logger }}</td>
+      <td class="wrap">{{ r.message }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">Nothing logged yet at this level.</p>
+{% endif %}

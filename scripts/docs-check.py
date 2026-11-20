@@ -2,10 +2,10 @@
 """Keep docs/guide honest against the code. Standard library only.
 
 Checks (all findings are printed as path:line: message; exit 1 when any exist):
-  - every environment variable the code reads (ALPACA_*, XTB_*, RISK_* string literals and
+  - every environment variable the code reads (ALPACA_*, XTB_*, RISK_*, CONSOLE_*, TRADESIGNALS_* string literals and
     os.environ.get / os.getenv / env_bool first arguments) is listed in .env.example and in the
     operator configuration reference, together with its literal default;
-  - every CLI flag added in tradesignals/cli.py appears in the operator commands page;
+  - every CLI flag added in tradesignals/cli.py or tradesignals/tui.py appears in the operator commands page;
   - every registry name (DATA_PROVIDERS, BROKERS, strategy `name`) appears in the commands page;
   - every `tests/<file>.py::<test>` cited anywhere in the docs exists;
   - each book has README.md, SUMMARY.md and .gitbook.yaml; every SUMMARY target exists; every
@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 BOOKS = ("user", "operator", "tester")
-ENV_PREFIXES = ("ALPACA_", "XTB_", "RISK_")
+ENV_PREFIXES = ("ALPACA_", "XTB_", "RISK_", "CONSOLE_", "TRADESIGNALS_")
 LINK_RE = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 SUMMARY_LINK_RE = re.compile(r"^\s*(?:[-*]\s+)?\[([^\]]+)\]\(([^)]+)\)\s*$")
 TEST_REF_RE = re.compile(r"tests/(test_\w+\.py)::(test_\w+)")
@@ -151,13 +151,18 @@ class Checker:
         return out
 
     def cli_flags(self) -> list[str]:
-        tree = ast.parse((self.pkg / "cli.py").read_text(encoding="utf-8"))
         flags: list[str] = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "add_argument":
-                for a in node.args:
-                    if isinstance(a, ast.Constant) and isinstance(a.value, str) and a.value.startswith("--"):
-                        flags.append(a.value)
+        for module in ("cli.py", "tui.py"):  # both console scripts declared in pyproject.toml
+            tree = ast.parse((self.pkg / module).read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "add_argument"
+                ):
+                    for a in node.args:
+                        if isinstance(a, ast.Constant) and isinstance(a.value, str) and a.value.startswith("--"):
+                            flags.append(a.value)
         return flags
 
     def registry_names(self) -> dict[str, list[str]]:

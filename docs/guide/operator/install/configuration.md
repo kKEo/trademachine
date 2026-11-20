@@ -26,7 +26,7 @@ Missing keys raise `RuntimeError: ALPACA_API_KEY / ALPACA_SECRET_KEY not set` wh
 
 ## Risk limits
 
-Read only when `--broker` is given (`tradesignals/cli.py:118`), through `RiskLimits.from_env()` (`tradesignals/risk.py:21-29`). A value that does not parse raises at startup with a traceback.
+Read only when `--broker` is given (`tradesignals/cli.py:143`), through `RiskLimits.from_env()` (`tradesignals/risk.py:25-33`). A value that does not parse raises at startup with a traceback.
 
 | Variable | Default | Parsed as | Rule |
 |---|---|---|---|
@@ -37,6 +37,14 @@ Read only when `--broker` is given (`tradesignals/cli.py:118`), through `RiskLim
 | `RISK_MAX_QUOTE_AGE_SEC` | `15` | float | reject when the last tick for the symbol is older than this (wall clock) |
 
 The order in which the rules run, and their reject strings, are in [Execution and risk](../internals/execution-and-risk.md).
+
+## Persistence and console
+
+| Variable | Default | Parsed as | Meaning |
+|---|---|---|---|
+| `TRADESIGNALS_DB` | empty (off) | path | SQLite file for signals, their outcomes, orders, completed bars and equity snapshots. The `--db` flag wins over the variable. Empty means nothing is persisted. |
+| `CONSOLE_PORT` | `8788` | int | port of the admin console started with `--console`. The `--console-port` flag wins. The console always binds to `127.0.0.1`. |
+| `CONSOLE_TOKEN` | empty (read-only) | string | secret that unlocks the console's actions. Empty means the console can only show things; every state-changing request is refused. |
 
 ## Strict booleans
 
@@ -49,7 +57,7 @@ The order in which the rules run, and their reject strings, are in [Execution an
 | `0`, `false`, `no`, `off` | live / real |
 | anything else | `ValueError: ALPACA_PAPER='...' is not a boolean; use true or false` at startup |
 
-The point is that no spelling fails open to a live account. Setting a flag to `false` is still not enough to trade live: the CLI refuses `--execute` against a broker whose `paper` attribute is false unless `--allow-live` is given (`tradesignals/cli.py:83-95`).
+The point is that no spelling fails open to a live account. Setting a flag to `false` is still not enough to trade live: the CLI refuses `--execute` against a broker whose `paper` attribute is false unless `--allow-live` is given (`tradesignals/cli.py:108-120`).
 
 ## `.env.example`
 
@@ -72,6 +80,6 @@ The following are hard-coded. Changing them means editing the code (all location
 | Alpaca stream bars | always 1-minute | `tradesignals/providers/alpaca.py:122` |
 | Symbol mapper overrides | none | `tradesignals/interfaces.py:15` |
 | Strategy parameters (SMA lengths, RSI thresholds) | class defaults | `strategies/` |
-| Log format, level, destination | `%(asctime)s %(levelname)s %(name)s: %(message)s` to stderr, INFO (`-v` for DEBUG) | `tradesignals/cli.py:76-80` |
+| Log format, level, destination | `%(asctime)s %(levelname)s %(name)s: %(message)s` to stderr, INFO (`-v` for DEBUG) | `tradesignals/cli.py:101-105` |
 
 There is no configuration file and no `--config` flag.

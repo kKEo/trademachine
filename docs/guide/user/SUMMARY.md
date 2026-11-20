@@ -6,6 +6,7 @@
 * [Quick start](quick-start.md)
 * [Everyday use](everyday-use.md)
 * [Reading the output](reading-the-output.md)
+* [The admin console](using-the-console.md)
 * [Strategies explained](strategies.md)
 * [Trust and safety](trust-and-safety.md)
 * [Use cases and limits](use-cases.md)

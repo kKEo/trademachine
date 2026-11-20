@@ -10,6 +10,7 @@ tradesignals is a small command-line program. It listens to live prices, builds 
 | get a first run going (about 15 minutes) | [Quick start](quick-start.md) |
 | start, stop, restart, and choose stocks and strategies | [Everyday use](everyday-use.md) |
 | understand a line the program printed | [Reading the output](reading-the-output.md) |
+| watch your account, prices and signals in the browser, and act from there | [The admin console](using-the-console.md) |
 | know what the two built-in strategies actually do | [Strategies explained](strategies.md) |
 | know what keeps your money safe, and what does not | [Trust and safety](trust-and-safety.md) |
 | decide whether this tool fits your situation | [Use cases and limits](use-cases.md) |

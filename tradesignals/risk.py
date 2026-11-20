@@ -1,4 +1,8 @@
-"""Pre-trade risk guards. These run in *our* code, before anything reaches a broker."""
+"""Pre-trade risk guards. These run in *our* code, before anything reaches a broker.
+
+Orders that only reduce an existing position (without flipping it) are always allowed: they can
+only lower risk, and a halt, a notional cap or a stale quote must never trap you in a position.
+"""
 
 from __future__ import annotations
 
@@ -43,9 +47,13 @@ class RiskManager:
         positions: list[Position],
         account: Account | None,
         now: datetime | None = None,
+        commit: bool = True,
     ) -> tuple[bool, str]:
+        """``commit=False`` asks "would this pass?" without latching a halt or fixing the loss baseline."""
         now = now or utcnow()
         L = self.limits
+        if reduces_position(req, positions):
+            return True, "ok: reduces position"
         if self.halted:
             return False, f"halted: {self.halt_reason}"
         if last_tick is None:
@@ -65,10 +73,31 @@ class RiskManager:
         if cur is None and new_qty != 0 and len(positions) >= L.max_open_positions:
             return False, f"max open positions ({L.max_open_positions})"
         if account is not None:
-            if self.start_equity is None:
-                self.start_equity = account.equity
-            dd = self.start_equity - account.equity
+            start = self.start_equity if self.start_equity is not None else account.equity
+            if commit:
+                self.start_equity = start
+            dd = start - account.equity
             if dd > L.max_daily_loss:
-                self.halted, self.halt_reason = True, f"daily loss {dd:.0f} > {L.max_daily_loss}"
-                return False, self.halt_reason
+                reason = f"daily loss {dd:.0f} > {L.max_daily_loss}"
+                if commit:
+                    self.halted, self.halt_reason = True, reason
+                return False, reason
         return True, "ok"
+
+    def halt(self, reason: str) -> None:
+        self.halted, self.halt_reason = True, reason
+
+    def resume(self) -> None:
+        """Clear a halt. The loss baseline restarts from the next account seen, so a loss halt
+        does not re-trigger at once; the operator has decided to carry on from here."""
+        self.halted, self.halt_reason = False, ""
+        self.start_equity = None
+
+
+def reduces_position(req: OrderRequest, positions: list[Position]) -> bool:
+    """True when the order shrinks an existing position towards zero without crossing it."""
+    cur = next((p.qty for p in positions if p.symbol == req.symbol), 0.0)
+    if abs(cur) < 1e-9:
+        return False
+    signed = req.qty if req.side == Side.BUY else -req.qty
+    return (cur > 0) != (signed > 0) and abs(signed) <= abs(cur) + 1e-9

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Portfolio{% endblock %}
+{% block main %}
+<h1>Portfolio</h1>
+
+<section class="band" aria-label="Account figures" hx-get="/partials/kpis" hx-trigger="live-snapshot from:body, live-refresh from:body">
+  {% include "partials/kpis.html" %}
+</section>
+
+<section class="panel" aria-labelledby="h-pos">
+  <h2 id="h-pos">Positions</h2>
+  <div hx-get="/partials/positions" hx-trigger="live-snapshot from:body, live-refresh from:body">
+    {% with compact = false %}{% include "partials/positions.html" %}{% endwith %}
+  </div>
+</section>
+{% if access.trading %}
+<section class="panel" aria-labelledby="h-ticket">
+  <h2 id="h-ticket">Place an order</h2>
+  <form class="ticket" data-action="/api/actions/order" aria-label="Order ticket">
+    <label>Symbol
+      <select name="symbol" required>{% for sym in symbols %}<option value="{{ sym }}">{{ sym }}</option>{% endfor %}</select>
+    </label>
+    <label>Side
+      <select name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select>
+    </label>
+    <label>Shares
+      <input type="number" name="qty" min="0" step="any" required>
+    </label>
+    <label>Type
+      <select name="type"><option value="market">Market</option><option value="limit">Limit</option></select>
+    </label>
+    <label>Limit price <span class="sub">(limit orders)</span>
+      <input type="number" name="limit_price" min="0" step="any">
+    </label>
+    <button type="submit" data-action="/api/actions/order/preview" data-keep>Check against risk</button>
+    <button type="submit" class="danger">Send order</button>
+  </form>
+  <p class="empty">Every order passes the same risk limits as a strategy's. A running strategy may trade the same symbol again on its next signal.</p>
+</section>
+{% endif %}
+
+<section class="panel" aria-labelledby="h-open">
+  <h2 id="h-open">Orders waiting to fill</h2>
+  <div hx-get="/partials/open-orders" hx-trigger="live-order from:body, live-snapshot from:body, live-refresh from:body">
+    {% include "partials/open_orders.html" %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-trades">
+  <h2 id="h-trades">Trade history</h2>
+  <div hx-get="/partials/trades" hx-trigger="live-order from:body throttle:3s, live-refresh from:body">
+    {% include "partials/trades.html" %}
+  </div>
+</section>
+{% endblock %}

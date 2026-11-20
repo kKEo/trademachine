@@ -30,8 +30,8 @@ Alpaca streams quote ticks *and* one-minute bars for every subscribed symbol. Fe
 
 The rule now is **provider bars win**:
 
-- A provider declares `pushes_bars = True` (`AlpacaData`, `tradesignals/providers/alpaca.py:89`). The engine then never feeds ticks into aggregators for that provider (`tradesignals/engine.py:75` sets `_ticks_build_bars`, checked at `tradesignals/engine.py:183`). Ticks still update `last_tick` (used by the risk checks and the paper broker marks) and still reach `Strategy.on_tick()`.
-- As a safety net for an adapter that forgets the declaration, the first provider bar seen for a symbol switches that symbol over (`tradesignals/engine.py:198-203`). Only the buckets before that first bar can be tick-built.
+- A provider declares `pushes_bars = True` (`AlpacaData`, `tradesignals/providers/alpaca.py:89`). The engine then never feeds ticks into aggregators for that provider (`tradesignals/engine.py:118` sets `_ticks_build_bars`, checked at `tradesignals/engine.py:466`). Ticks still update `last_tick` (used by the risk checks and the paper broker marks) and still reach `Strategy.on_tick()`.
+- As a safety net for an adapter that forgets the declaration, the first provider bar seen for a symbol switches that symbol over (`tradesignals/engine.py:474-479`). Only the buckets before that first bar can be tick-built.
 - `ReplayProvider(events, pushes_bars=True)` emulates a bar-pushing provider in tests (`tests/test_engine_robustness.py`).
 
 With provider bars at 1 minute and a strategy at 5 minutes, the provider's bars roll up through the same aggregator; the 5-minute bar is emitted when the first 1-minute bar of the next 5-minute bucket arrives, about one minute after the bucket closes.
@@ -40,24 +40,24 @@ With provider bars at 1 minute and a strategy at 5 minutes, the provider's bars 
 
 ## Multiple strategies
 
-The CLI runs one strategy. A program embedding the engine may pass several. Aggregators are keyed by `(symbol, timeframe)` and shared, so two strategies on the same symbol and timeframe feed the same aggregator once per strategy (`tradesignals/engine.py:179-196`): only the first strategy in the list receives the completed bar, and rolled-up volume is added once per strategy. Give each strategy its own timeframe or symbol set until this is fixed (listed in [Known gaps](../develop/known-gaps.md)).
+The CLI runs one strategy. A program embedding the engine may pass several. Aggregators are keyed by `(symbol, timeframe)` and shared, so two strategies on the same symbol and timeframe feed the same aggregator once per strategy (`tradesignals/engine.py:452-469`): only the first strategy in the list receives the completed bar, and rolled-up volume is added once per strategy. Give each strategy its own timeframe or symbol set until this is fixed (listed in [Known gaps](../develop/known-gaps.md)).
 
-Events for symbols that no strategy handles are dropped silently (`tradesignals/engine.py:186`, `tradesignals/engine.py:205`). A wrong XTB suffix therefore produces zero events and no error.
+Events for symbols that no strategy handles are dropped silently (`tradesignals/engine.py:490`, `tradesignals/engine.py:490`). A wrong XTB suffix therefore produces zero events and no error.
 
 ## Warm-up
 
-`SignalEngine._warmup()` (`tradesignals/engine.py:131-150`) runs once per strategy before subscribing to live data, unless `--no-warmup` was given:
+`SignalEngine._warmup()` (`tradesignals/engine.py:401-423`) runs once per strategy before subscribing to live data, unless `--no-warmup` was given:
 
-1. `start = utcnow() - timeframe.seconds * warmup_bars * 3` (`tradesignals/engine.py:135`): three times the required span, to allow for gaps and closed hours.
+1. `start = utcnow() - timeframe.seconds * warmup_bars * 3` (`tradesignals/engine.py:408`): three times the required span, to allow for gaps and closed hours.
 2. `get_bars(symbol, timeframe, start)` per symbol. A failure logs `warmup <strategy>/<symbol> failed: ...` at WARNING and the strategy starts cold for that symbol.
 3. The last `warmup_bars` bars are fed to `on_bar()`; any signals they produce are discarded.
-4. Fewer than `warmup_bars` bars log `only N of M bars available; strategy starts cold` at WARNING (`tradesignals/engine.py:146`); enough bars log `warmup <strategy>/<symbol>: N bars` at INFO.
+4. Fewer than `warmup_bars` bars log `only N of M bars available; strategy starts cold` at WARNING (`tradesignals/engine.py:419`); enough bars log `warmup <strategy>/<symbol>: N bars` at INFO.
 
 Because the window is anchored to the wall clock, the amount of history depends on when you start:
 
 | Strategy | `warmup_bars` | Window | Enough history when |
 |---|---|---|---|
-| `sma_cross` (1m) | 31 (`tradesignals/strategies/sma_cross.py:16`) | 93 minutes | more than 31 minutes after the open |
+| `sma_cross` (1m) | 31 (`tradesignals/strategies/sma_cross.py:17`) | 93 minutes | more than 31 minutes after the open |
 | `rsi_reversion` (5m) | 42 (`tradesignals/strategies/rsi_reversion.py:18`) | 10.5 hours | always during a session, because the window reaches into the previous session |
 
 The warm-up history may include the bucket in progress. The first live bar of that bucket can then be partial or duplicate the history's last bar. Nothing de-duplicates by `start` yet.

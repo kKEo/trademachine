@@ -1,0 +1,17 @@
+{% if audit %}
+<table>
+  <thead><tr><th scope="col">Time</th><th scope="col">Action</th><th scope="col">On</th><th scope="col">Result</th></tr></thead>
+  <tbody>
+    {% for a in audit %}
+    <tr>
+      <td class="fig" title="{{ a.ts | stamp }}">{{ a.ts | clock }}</td>
+      <th scope="row">{{ a.action | replace("_", " ") }}</th>
+      <td>{{ a.detail }}</td>
+      <td class="wrap {{ 'warn-text' if a.result.startswith('refused') or a.result.startswith('failed') else 'sub' }}">{{ a.result }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">Nothing has been done from the console yet. Every action taken here is recorded.</p>
+{% endif %}

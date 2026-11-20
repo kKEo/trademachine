@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ signal.symbol }} {{ signal.kind }} signal{% endblock %}
+{% block head %}
+<script src="/static/vendor/lightweight-charts.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block main %}
+{% set s = signal %}
+<p class="crumb"><a href="/signals">Signals</a></p>
+<div class="titlebar">
+  <h1><span class="kind kind-{{ s.kind }}">{{ s.kind | capitalize }}</span> {{ s.symbol }}</h1>
+  <p class="when fig" title="{{ s.ts | stamp }}">{{ s.ts | stamp }}</p>
+</div>
+
+<section class="band" aria-label="What happened next">
+  <dl class="figures">
+    <div class="lead">
+      <dt>Price at the signal</dt>
+      <dd class="fig">{{ s.ref | money }}</dd>
+    </div>
+    {% for h in horizons %}
+    <div>
+      <dt>After {{ h }} bar{{ "" if h == 1 else "s" }}</dt>
+      <dd class="fig {{ s.edge[h] | tone }}">{{ s.returns[h] | pct }}</dd>
+      <dd class="sub">{% if s.edge[h] is none %}not there yet{% elif s.edge[h] > 0 %}the signal was right{% elif s.edge[h] < 0 %}the signal was wrong{% else %}no move{% endif %}</dd>
+    </div>
+    {% endfor %}
+    {% if trip %}
+    <div>
+      <dt>Trade it {{ trip.role }}</dt>
+      <dd class="fig {{ trip.pnl | tone }}">{% if trip.open %}open{% else %}{{ trip.pnl | signed }}{% endif %}</dd>
+      <dd class="sub fig">{% if not trip.open %}{{ trip.pnl_pct | pct }} in {{ trip.hold_sec | duration }}{% else %}{{ trip.open_qty | qty }} shares held{% endif %}</dd>
+    </div>
+    {% endif %}
+  </dl>
+</section>
+
+<section class="panel" aria-label="{{ s.symbol }} price around the signal">
+  <div class="chart-head">
+    <p id="legend" class="legend fig" aria-live="off">&nbsp;</p>
+    <fieldset class="toggles">
+      <legend class="visually-hidden">Chart layers</legend>
+      <label><input type="checkbox" data-layer="sma10" checked> <span class="swatch" style="--c: var(--sel)"></span>Average 10</label>
+      <label><input type="checkbox" data-layer="sma30" checked> <span class="swatch" style="--c: var(--warn)"></span>Average 30</label>
+      <label><input type="checkbox" data-layer="ema20"> <span class="swatch" style="--c: var(--alt)"></span>EMA 20</label>
+      <label><input type="checkbox" data-layer="signals" checked> Signals</label>
+      <label><input type="checkbox" data-layer="fills" checked> Fills</label>
+    </fieldset>
+  </div>
+  <div id="price-chart" class="chart tall" data-chart="price" data-symbol="{{ s.symbol }}" data-timeframe="{{ s.timeframe }}" data-focus="{{ s.ts | int }}" role="img" aria-label="{{ s.symbol }} candlesticks around the signal"></div>
+  <h2 class="pane-title">RSI 14</h2>
+  <div id="rsi-chart" class="chart short" role="img" aria-label="{{ s.symbol }} 14-bar RSI"></div>
+  <p id="chart-note" class="empty" hidden></p>
+</section>
+
+<div class="split">
+  <section class="panel" aria-labelledby="h-why">
+    <h2 id="h-why">The signal</h2>
+    <dl class="facts">
+      <div><dt>Raised by</dt><dd>{{ s.strategy }} on {{ s.timeframe }} bars</dd></div>
+      <div><dt>Why</dt><dd>{{ s.reason or "The strategy gave no reason." }}</dd></div>
+      <div><dt>Strength</dt><dd class="fig">{{ "%.0f" | format(s.strength * 100) }}%</dd></div>
+      <div><dt>Result</dt><dd>{% include "partials/outcome.html" %}{% if s.outcome_detail %} <span class="sub">{{ s.outcome_detail }}</span>{% endif %}</dd></div>
+    </dl>
+  </section>
+  <section class="panel" aria-labelledby="h-exec">
+    <h2 id="h-exec">Execution</h2>
+    {% if order %}
+    <dl class="facts">
+      <div><dt>Order</dt><dd><span class="side side-{{ order.side }}">{{ order.side }}</span> <span class="fig">{{ order.qty | qty }}</span> shares, <span class="ostatus ostatus-{{ order.status }}">{{ order.status | replace("_", " ") }}</span> <span class="sub fig">{{ order.source }} {{ order.id }}</span></dd></div>
+      <div><dt>Filled</dt><dd><span class="fig">{{ order.filled_qty | qty }}</span> at <span class="fig">{{ order.avg_fill_price | money }}</span></dd></div>
+      <div><dt>Slippage against the signal bar's close</dt>
+        <dd>{% if quality.slippage_pct is not none %}<span class="fig {{ (0 - quality.slippage_pct) | tone }}">{{ quality.slippage_pct | pct(3) }}</span> <span class="sub">{{ "worse" if quality.slippage_pct > 0 else "better or equal" }}</span>{% else %}Not measurable{% endif %}</dd></div>
+      <div><dt>Time from bar close to order</dt>
+        <dd>{% if quality.latency_sec is not none %}<span class="fig">{{ "%.1f" | format(quality.latency_sec) }}</span> s{% else %}Not measurable <span class="sub">(replayed data)</span>{% endif %}</dd></div>
+    </dl>
+    {% elif s.outcome == "risk_reject" %}
+    <p class="empty">Risk blocked the order: {{ s.outcome_detail }}.</p>
+    {% elif s.outcome == "no_op" %}
+    <p class="empty">No order was needed: the position was {{ s.outcome_detail }}.</p>
+    {% elif s.outcome == "submit_failed" %}
+    <p class="empty">The broker refused or failed: {{ s.outcome_detail }}.</p>
+    {% else %}
+    <p class="empty">No order was sent. The engine was in signals-only mode.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

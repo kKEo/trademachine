@@ -1,0 +1,29 @@
+{% if risk %}
+{% if risk.halted %}
+<p class="alert" role="alert"><strong>Trading is halted.</strong> Reason: {{ risk.halt_reason }}. No position can be opened or increased; exits still go through.</p>
+{% endif %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Limit</th>
+      <th scope="col" class="num">Now</th>
+      <th scope="col" class="num">Allowed</th>
+      <th scope="col">Used</th>
+      <th scope="col">What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in risk.rows %}
+    <tr>
+      <th scope="row">{{ r.name }}</th>
+      <td class="num fig">{% if r.used is none %}<span class="sub">per order</span>{% elif r.kind == "money" %}{{ r.used | money }}{% else %}{{ r.used | qty }}{% endif %}</td>
+      <td class="num fig">{% if r.kind == "money" %}{{ r.limit | money }}{% else %}{{ r.limit | qty }}{% endif %}</td>
+      <td>{% if r.share_pct is not none %}<span class="bar {{ 'hot' if r.share_pct >= 80 }}" style="--w: {{ '%.0f' | format(r.share_pct) }}%"></span><span class="fig sub">{{ '%.0f' | format(r.share_pct) }}%</span>{% endif %}</td>
+      <td class="sub wrap">{{ r.note }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No broker is connected, so no risk limits apply. Limits are checked before every order once the engine runs with <code>--broker</code>.</p>
+{% endif %}

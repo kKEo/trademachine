@@ -6,7 +6,7 @@ This page gets the suite running and tells you what a healthy run looks like. It
 
 ```bash
 source .venv/bin/activate
-pip install -e ".[alpaca,dev]"     # once; installs pytest, pytest-asyncio and ruff
+pip install -e ".[alpaca,console,tui,dev]"     # once; installs pytest, pytest-asyncio, ruff and what the console tests import
 pytest -q
 ```
 
@@ -15,7 +15,7 @@ Expected tail of the output:
 ```text
 ........................................................................ [ 68%]
 .................................                                        [100%]
-105 passed in 0.8s
+251 passed in 14s
 ```
 
 The count grows as tests are added; what matters is `passed` with no `failed`, `error` or `skipped` (one test, `tests/test_alpaca_mapping.py::test_timeframe_lookup_against_real_alpaca_enum`, skips itself when the `alpaca` extra is not installed; with the install line above it runs).

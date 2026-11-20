@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block head %}
+<script src="/static/vendor/lightweight-charts.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block main %}
+<h1>Overview</h1>
+
+<section class="band" aria-label="Account figures" hx-get="/partials/kpis" hx-trigger="live-snapshot from:body, live-refresh from:body">
+  {% include "partials/kpis.html" %}
+</section>
+
+{% if status.halted %}
+<p class="alert" role="alert"><strong>Trading is halted.</strong> Reason: {{ status.halt_reason }}. <a href="/risk">Open risk controls</a></p>
+{% endif %}
+
+{% if kpis.has_account %}
+<section class="panel" aria-labelledby="h-equity">
+  <h2 id="h-equity">Equity</h2>
+  <div class="chart" id="equity-chart" data-chart="equity" role="img" aria-label="Account equity over time"></div>
+</section>
+{% endif %}
+
+<div class="split">
+  <section class="panel" aria-labelledby="h-pos">
+    <h2 id="h-pos"><a href="/portfolio">Positions</a></h2>
+    <div hx-get="/partials/positions?compact=true" hx-trigger="live-snapshot from:body, live-refresh from:body">
+      {% with compact = true %}{% include "partials/positions.html" %}{% endwith %}
+    </div>
+  </section>
+  <section class="panel" aria-labelledby="h-sig">
+    <h2 id="h-sig">Latest signals</h2>
+    <div hx-get="/partials/signals?limit=12" hx-trigger="live-signal from:body, live-refresh from:body">
+      {% include "partials/signals.html" %}
+    </div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="h-ord">
+  <h2 id="h-ord"><a href="/orders">Latest orders</a></h2>
+  <div hx-get="/partials/orders?limit=8&compact=true" hx-trigger="live-order from:body, live-refresh from:body">
+    {% with compact = true %}{% include "partials/orders.html" %}{% endwith %}
+  </div>
+</section>
+{% endblock %}

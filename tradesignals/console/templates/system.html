@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}System{% endblock %}
+{% block main %}
+<h1>System</h1>
+
+<section class="panel" aria-labelledby="h-health">
+  <h2 id="h-health">Health</h2>
+  <div hx-get="/partials/health" hx-trigger="every 10s, live-refresh from:body">
+    {% include "partials/health.html" %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-log">
+  <div class="titlebar tight">
+    <h2 id="h-log">Engine log</h2>
+    <nav class="segmented" aria-label="Log level">
+      <a href="/system#h-log" {% if not level %}aria-current="true"{% endif %}>Everything</a>
+      <a href="/system?level=WARNING#h-log" {% if level %}aria-current="true"{% endif %}>Warnings and errors</a>
+    </nav>
+  </div>
+  <div class="scroll tall" hx-get="/partials/logs{% if level %}?level={{ level }}{% endif %}" hx-trigger="every 5s, live-refresh from:body">
+    {% include "partials/logs.html" %}
+  </div>
+  <p class="empty">The latest 200 lines from this session, newest first. The full log is on the terminal the engine runs in.</p>
+</section>
+
+<div class="split">
+  <section class="panel" aria-labelledby="h-settings">
+    <h2 id="h-settings">Settings in effect</h2>
+    <table>
+      <thead><tr><th scope="col">Setting</th><th scope="col">Value</th></tr></thead>
+      <tbody>
+        {% for s in settings %}
+        <tr><th scope="row"><code>{{ s.name }}</code></th><td class="{{ 'sub' if s.secret or not s.value }}">{{ s.value or "default" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="empty">Keys and passwords are never shown, only whether they are set. Risk limits changed from the console are on the Risk page.</p>
+  </section>
+  <section class="panel" aria-labelledby="h-runs">
+    <h2 id="h-runs">Sessions</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th scope="col">Started</th><th scope="col">Ran for</th><th scope="col">Feed</th><th scope="col">Mode</th><th scope="col">Symbols</th></tr></thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td class="fig" title="{{ r.started_at | stamp }}">{{ r.started_at | clock }}</td>
+          <td class="fig">{% if r.stopped_at %}{{ (r.stopped_at - r.started_at) | duration }}{% elif r.id == status.run_id %}running{% else %}<span class="warn-text" title="The engine did not shut down cleanly">ended abruptly</span>{% endif %}</td>
+          <td>{{ r.data }}{% if r.broker %} → {{ r.broker }}{% endif %}</td>
+          <td>{% if not r.execute %}signals only{% elif r.paper %}paper{% else %}live{% endif %}</td>
+          <td>{{ r.symbols | replace(",", ", ") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="h-audit">
+  <h2 id="h-audit">Actions taken from the console</h2>
+  <div hx-get="/partials/audit" hx-trigger="live-audit from:body, live-refresh from:body">
+    {% include "partials/audit.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -4,6 +4,7 @@ Examples:
   tradesignals --data alpaca --symbols AAPL,MSFT --strategy sma_cross            # signal only
   tradesignals --data alpaca --broker paper --symbols NVDA --strategy sma_cross --execute
   tradesignals --data xtb --broker xtb --symbols AAPL --strategy rsi_reversion --execute
+  tradesignals --data alpaca --broker paper --symbols AAPL,MSFT --execute --console  # with the admin console
 """
 
 from __future__ import annotations
@@ -11,19 +12,25 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import signal
 
 from . import __version__
 from .engine import SignalEngine
+from .events import EventBus
 from .interfaces import Broker
 from .models import Tick, Timeframe
 from .providers import BROKERS, DATA_PROVIDERS, make_broker, make_data
 from .risk import RiskLimits, RiskManager
+from .store import Store, StoreWriter
 from .strategies import REGISTRY
 
 log = logging.getLogger("tradesignals.cli")
 
 _EXAMPLES = (__doc__ or "").split("Examples:", 1)[-1]
+
+DEFAULT_CONSOLE_PORT = 8788
+DEFAULT_CONSOLE_DB = "data/tradesignals.db"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,6 +70,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--no-warmup", action="store_true", help="skip replaying historical bars into the strategy at startup"
+    )
+    p.add_argument(
+        "--db",
+        default=None,
+        metavar="PATH",
+        help="persist signals, orders, bars and equity to this SQLite file (default: $TRADESIGNALS_DB, else off)",
+    )
+    p.add_argument(
+        "--console",
+        action="store_true",
+        help="serve the admin console on http://127.0.0.1:<port> (needs the 'console' extra; implies --db)",
+    )
+    p.add_argument(
+        "--console-port",
+        type=int,
+        default=None,
+        metavar="PORT",
+        help=f"port for --console (default: $CONSOLE_PORT, else {DEFAULT_CONSOLE_PORT})",
     )
     p.add_argument(
         "-v",
@@ -119,6 +144,11 @@ async def _run(args: argparse.Namespace) -> None:
     if args.execute and broker is None:
         log.warning("--execute given without --broker: running signal-only")
 
+    db_path = args.db or os.environ.get("TRADESIGNALS_DB") or None
+    if args.console and not db_path:
+        db_path = DEFAULT_CONSOLE_DB  # the console reads its history from the database
+    bus = EventBus() if db_path else None
+
     engine = SignalEngine(
         data,
         [strategy],
@@ -128,12 +158,63 @@ async def _run(args: argparse.Namespace) -> None:
         default_qty=args.qty,
         warmup=not args.no_warmup,
         on_tick=_paper_mark_callback(broker),
+        bus=bus,
     )
+
+    store: Store | None = None
+    writer: StoreWriter | None = None
+    if db_path and bus:
+        store = Store(db_path)
+        pruned = store.prune()
+        if any(pruned.values()):
+            log.info("pruned old rows: %s", pruned)
+        run_id = store.start_run(
+            data=data.name,
+            broker=broker.name if broker else "",
+            paper=broker.paper if broker else None,
+            execute=engine.execute,
+            symbols=symbols,
+            strategies=[strategy.name],
+        )
+        writer = StoreWriter(store, bus, run_id)
+        writer.start()
+        log.info("persisting to %s (run %s)", db_path, run_id)
+
+    console = None
+    if args.console and store and writer and bus:
+        console = _start_console(args, engine, store, writer, bus)
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, engine.stop)  # clean stop: cancels nothing, flattens nothing
-    await engine.run()
+    try:
+        await engine.run()
+    finally:
+        if console:
+            service, server = console
+            await service.stop()
+            await server.stop()
+        if writer and store:
+            await writer.stop()
+            store.end_run(writer.run_id)
+            store.close()
+
+
+def _start_console(args: argparse.Namespace, engine: SignalEngine, store: Store, writer: StoreWriter, bus: EventBus):
+    """Start the admin console next to the engine. Returns (service, server), or None if it cannot run."""
+    try:
+        from .console import ConsoleServer, ConsoleService, create_app
+    except ImportError as e:
+        raise SystemExit(f"--console needs the console extra: pip install -e '.[console]' ({e})") from e
+
+    port = args.console_port or int(os.environ.get("CONSOLE_PORT") or DEFAULT_CONSOLE_PORT)
+    token = os.environ.get("CONSOLE_TOKEN") or None
+    service = ConsoleService(engine, store, bus, run_id=writer.run_id)
+    service.start(writer)
+    server = ConsoleServer(create_app(service, token=token), port)
+    server.start()
+    log.info("console: %s (%s)", server.url, "actions enabled" if token else "read-only, CONSOLE_TOKEN not set")
+    return service, server
 
 
 def main() -> None:

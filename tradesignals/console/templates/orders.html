@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Orders{% endblock %}
+{% block main %}
+<h1>Orders</h1>
+<section class="panel" aria-label="Order history">
+  <div hx-get="/partials/orders?limit=200" hx-trigger="live-order from:body, live-refresh from:body">
+    {% with compact = false %}{% include "partials/orders.html" %}{% endwith %}
+  </div>
+</section>
+{% endblock %}

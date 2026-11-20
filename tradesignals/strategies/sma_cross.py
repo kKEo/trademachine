@@ -13,6 +13,7 @@ class SmaCross(Strategy):
     def __init__(self, symbols, fast: int = 10, slow: int = 30, timeframe: Timeframe = Timeframe.M1):
         super().__init__(symbols)
         self.timeframe = timeframe
+        self.fast, self.slow = fast, slow
         self.warmup_bars = slow + 1
         self._fast = {s: SMA(fast) for s in self.symbols}
         self._slow = {s: SMA(slow) for s in self.symbols}

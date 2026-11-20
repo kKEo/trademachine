@@ -1,0 +1,26 @@
+{% if signals %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Time</th>
+      <th scope="col">Symbol</th>
+      <th scope="col">Signal</th>
+      <th scope="col">Strategy</th>
+      <th scope="col">Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in signals %}
+    <tr>
+      <td class="fig" title="{{ s.ts | stamp }}">{{ s.ts | clock }}</td>
+      <th scope="row"><a href="/markets/{{ s.symbol }}">{{ s.symbol }}</a></th>
+      <td><span class="kind kind-{{ s.kind }}">{{ s.kind }}</span></td>
+      <td>{{ s.strategy }}</td>
+      <td>{% include "partials/outcome.html" %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No signals yet. A strategy speaks up when its condition is met, for example when the fast average crosses the slow one.</p>
+{% endif %}

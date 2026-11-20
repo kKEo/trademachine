@@ -63,12 +63,34 @@ def test_daily_loss_check_is_skipped_when_account_unknown():
     assert rm.check(req(), tick(), [], None, now=T0)[0]
 
 
-def test_halted_also_blocks_position_reducing_orders():
-    """Documented policy gap: a halt blocks exits too (operator guide, Known gaps)."""
-    rm = RiskManager(RiskLimits())
-    rm.halted, rm.halt_reason = True, "kill switch"
-    ok, why = rm.check(req(Side.SELL, qty=1), tick(), [Position("AAPL", 1, 100)], None, now=T0)
+def test_halt_blocks_new_risk_but_never_an_exit():
+    """A halt, a cap or a stale quote must not trap you in a position (was known gap H1)."""
+    rm = RiskManager(RiskLimits(max_order_notional=1))
+    rm.halt("kill switch")
+    held = [Position("AAPL", 5, 100)]
+    ok, why = rm.check(req(Side.BUY, qty=1), tick(), held, None, now=T0)
     assert not ok and why == "halted: kill switch"
+    # selling part or all of the position passes: halted, over the notional cap, without any quote
+    assert rm.check(req(Side.SELL, qty=1), None, held, None, now=T0) == (True, "ok: reduces position")
+    assert rm.check(req(Side.SELL, qty=5), tick(), held, None, now=T0 + timedelta(hours=1))[0]
+    # ...but selling through zero would open a short, which is new risk
+    ok, why = rm.check(req(Side.SELL, qty=6), tick(), held, None, now=T0)
+    assert not ok and why == "halted: kill switch"
+    # covering a short is an exit too
+    assert rm.check(req(Side.BUY, qty=2), None, [Position("AAPL", -2, 100)], None, now=T0)[0]
+    # an order in a symbol we do not hold is never an exit
+    assert not rm.check(req(Side.SELL, qty=1), tick(), [Position("MSFT", 5, 100)], None, now=T0)[0]
+
+
+def test_resume_clears_the_halt_and_restarts_the_loss_baseline():
+    rm = RiskManager(RiskLimits(max_daily_loss=200))
+    assert rm.check(req(), tick(), [], Account(10_000, 10_000, 10_000), now=T0)[0]
+    assert not rm.check(req(), tick(), [], Account(9_700, 9_700, 9_700), now=T0)[0] and rm.halted
+    rm.resume()
+    assert not rm.halted and rm.halt_reason == ""
+    # carrying on from 9,700: the old loss does not halt again, a further 200 does
+    assert rm.check(req(), tick(), [], Account(9_700, 9_700, 9_700), now=T0)[0]
+    assert not rm.check(req(), tick(), [], Account(9_499, 9_499, 9_499), now=T0)[0]
 
 
 def test_limits_from_env(monkeypatch):

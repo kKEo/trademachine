@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Markets{% endblock %}
+{% block main %}
+<h1>Markets</h1>
+<p class="lede">Each symbol on the bar size its strategy trades. Trend compares the 10-bar with the 30-bar average; momentum is the 14-bar RSI, oversold below 30 and overbought above 70.</p>
+<section class="panel" aria-label="Watchlist">
+  <div hx-get="/partials/watchlist" hx-trigger="live-bar from:body throttle:5s, live-snapshot from:body throttle:10s, live-refresh from:body">
+    {% include "partials/watchlist.html" %}
+  </div>
+</section>
+{% endblock %}

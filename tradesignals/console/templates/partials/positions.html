@@ -1,0 +1,42 @@
+{% if positions %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Symbol</th>
+      <th scope="col" class="num">Shares</th>
+      <th scope="col" class="num">Avg cost</th>
+      <th scope="col" class="num">Last</th>
+      {% if not compact %}<th scope="col" class="num">Value</th>{% endif %}
+      <th scope="col" class="num">Open P&amp;L</th>
+      {% if not compact %}<th scope="col">Share of portfolio</th>{% endif %}
+      {% if not compact and access.trading %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in positions %}
+    <tr>
+      <th scope="row"><a href="/markets/{{ p.symbol }}">{{ p.symbol }}</a>{% if not p.traded %} <span class="tag" title="No running strategy trades this symbol">untracked</span>{% endif %}</th>
+      <td class="num fig">{{ p.qty | qty }}</td>
+      <td class="num fig">{{ p.avg_price | money }}</td>
+      <td class="num fig">{{ p.last | money }}</td>
+      {% if not compact %}<td class="num fig">{{ p.market_value | money }}</td>{% endif %}
+      <td class="num fig {{ p.unrealized_pnl | tone }}">{{ p.unrealized_pnl | signed }} <span class="sub">{{ p.unrealized_pct | pct }}</span></td>
+      {% if not compact %}<td><span class="bar" style="--w: {{ '%.1f' | format(p.share_pct) }}%"></span><span class="fig sub">{{ '%.0f' | format(p.share_pct) }}%</span></td>{% endif %}
+      {% if not compact and access.trading %}
+      <td class="num">
+        <details class="confirm">
+          <summary>Close</summary>
+          <form data-action="/api/actions/flatten">
+            <input type="hidden" name="symbol" value="{{ p.symbol }}">
+            <button type="submit" class="danger">{{ "Sell" if p.qty > 0 else "Buy back" }} {{ p.qty | abs | qty }} {{ p.symbol }} at market</button>
+          </form>
+        </details>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No open positions.</p>
+{% endif %}

@@ -1,0 +1,10 @@
+<dl class="facts grid">
+  <div><dt>Database</dt><dd><code>{{ health.database.path }}</code> <span class="sub">{{ health.database.size_bytes | filesize }}</span></dd></div>
+  <div><dt>Stored rows</dt><dd class="fig">{{ health.database.rows.signals }} signals, {{ health.database.rows.orders }} orders, {{ health.database.rows.bars }} bars, {{ health.database.rows.equity_snapshots }} equity points</dd></div>
+  <div><dt>Writes that failed</dt><dd class="fig {{ 'down' if health.failed_batches }}">{{ health.failed_batches }} <span class="sub">batches lost</span></dd></div>
+  <div><dt>Late market events ignored</dt><dd class="fig">{{ health.late_events_dropped }}</dd></div>
+  <div><dt>Events dropped for slow listeners</dt><dd class="fig">{% for s in health.subscribers %}{{ s.name }} <span class="{{ 'warn-text' if s.dropped else 'sub' }}">{{ s.dropped }}</span>{{ ", " if not loop.last }}{% endfor %}</dd></div>
+  <div><dt>Quote age</dt><dd class="fig">{% for sym, age in health.quote_age_sec.items() %}{{ sym }} <span class="sub">{{ age | duration if age is not none else "none yet" }}</span>{{ ", " if not loop.last }}{% endfor %}</dd></div>
+  <div><dt>Orders waiting to fill</dt><dd class="fig">{{ health.open_orders }}</dd></div>
+  <div><dt>Browser tabs connected</dt><dd class="fig">{{ health.browser_tabs }}</dd></div>
+</dl>

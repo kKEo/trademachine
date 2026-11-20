@@ -16,6 +16,7 @@ class RsiReversion(Strategy):
         super().__init__(symbols)
         self.timeframe = timeframe
         self.warmup_bars = n * 3
+        self.n = n
         self.oversold, self.exit = oversold, exit
         self._rsi = {s: RSI(n) for s in self.symbols}
         self._in = {s: False for s in self.symbols}

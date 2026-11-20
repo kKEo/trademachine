@@ -36,9 +36,9 @@ Words used in this guide, in the order you are likely to meet them.
 
 **Risk limit.** One of five rules checked before every order: order value, position size, number of open positions, loss since start, and age of the last price.
 
-**Halt.** The state after the loss limit fires or the kill switch is pulled: every order is blocked until restart, including exits.
+**Halt.** The state after the loss limit fires, the kill switch is pulled or you choose "Halt trading" in the admin console: no position can be opened or enlarged, but selling what you hold still works. It lasts until you resume from the console or restart.
 
-**Kill switch.** A function inside the engine that halts risk, cancels open orders and stops. The command-line program does not expose it; `Ctrl-C` is a plain stop.
+**Kill switch.** Halts trading, cancels orders that have not filled and stops the program; it does not close positions. You reach it from the admin console's Risk page or with `k` in the terminal view. `Ctrl-C` is a plain stop.
 
 **Stale quote.** A last price older than the limit (15 seconds by default). Orders are blocked while the quote is stale.
 

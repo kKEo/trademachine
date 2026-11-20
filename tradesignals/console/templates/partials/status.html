@@ -1,0 +1,20 @@
+<dl class="state" data-mode="{{ status.mode }}" data-halted="{{ 'true' if status.halted else 'false' }}">
+  <div>
+    <dt>Mode</dt>
+    <dd class="mode">{% if status.mode == "paper" %}Paper trading{% elif status.mode == "live" %}Live trading{% else %}Signals only{% endif %}</dd>
+  </div>
+  <div>
+    <dt>Engine</dt>
+    <dd>{% if status.running %}Running {{ status.uptime_sec | duration }}{% else %}Stopped{% endif %}</dd>
+  </div>
+  <div>
+    <dt>Feed</dt>
+    <dd>{{ status.data }}{% if status.broker %} → {{ status.broker }}{% endif %}</dd>
+  </div>
+  {% if status.halted %}
+  <div class="halt">
+    <dt>Trading halted</dt>
+    <dd>{{ status.halt_reason }}</dd>
+  </div>
+  {% endif %}
+</dl>

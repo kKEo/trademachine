@@ -1,0 +1,71 @@
+{% set st = trades.stats %}
+{% if trades.trips %}
+<dl class="figures compact">
+  <div><dt>Realised P&amp;L</dt><dd class="fig {{ st.pnl | tone }}">{{ st.pnl | signed }}</dd></div>
+  <div><dt>Closed trades</dt><dd class="fig">{{ st.trades }}</dd></div>
+  <div><dt>Won</dt><dd class="fig">{% if st.win_rate is not none %}{{ "%.0f" | format(st.win_rate) }}%{% else %}—{% endif %}</dd></div>
+  <div><dt>Average win</dt><dd class="fig up">{{ st.avg_win | signed }}</dd></div>
+  <div><dt>Average loss</dt><dd class="fig down">{{ st.avg_loss | signed }}</dd></div>
+  <div><dt>Profit factor</dt><dd class="fig">{% if st.profit_factor is not none %}{{ "%.2f" | format(st.profit_factor) }}{% else %}—{% endif %}</dd></div>
+</dl>
+<div class="split inner">
+  <div>
+    <h3>By symbol</h3>
+    <table>
+      <thead><tr><th scope="col">Symbol</th><th scope="col" class="num">Trades</th><th scope="col" class="num">Won</th><th scope="col" class="num">Realised P&amp;L</th></tr></thead>
+      <tbody>
+        {% for name, g in trades.by_symbol.items() %}
+        <tr><th scope="row"><a href="/markets/{{ name }}">{{ name }}</a></th><td class="num fig">{{ g.trades }}</td><td class="num fig">{% if g.win_rate is not none %}{{ "%.0f" | format(g.win_rate) }}%{% else %}—{% endif %}</td><td class="num fig {{ g.pnl | tone }}">{{ g.pnl | signed }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>By strategy</h3>
+    <table>
+      <thead><tr><th scope="col">Strategy</th><th scope="col" class="num">Trades</th><th scope="col" class="num">Won</th><th scope="col" class="num">Realised P&amp;L</th></tr></thead>
+      <tbody>
+        {% for name, g in trades.by_strategy.items() %}
+        <tr><th scope="row">{{ name }}</th><td class="num fig">{{ g.trades }}</td><td class="num fig">{% if g.win_rate is not none %}{{ "%.0f" | format(g.win_rate) }}%{% else %}—{% endif %}</td><td class="num fig {{ g.pnl | tone }}">{{ g.pnl | signed }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<h3>Every trade</h3>
+<div class="scroll">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Opened</th>
+      <th scope="col">Symbol</th>
+      <th scope="col">Side</th>
+      <th scope="col" class="num">Shares</th>
+      <th scope="col" class="num">Entry</th>
+      <th scope="col" class="num">Exit</th>
+      <th scope="col" class="num">P&amp;L</th>
+      <th scope="col" class="num">Held</th>
+      <th scope="col">Strategy</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in trades.trips[:100] %}
+    <tr>
+      <td class="fig" title="{{ t.entry_ts | stamp }}">{{ t.entry_ts | clock }}</td>
+      <th scope="row"><a href="/markets/{{ t.symbol }}">{{ t.symbol }}</a></th>
+      <td><span class="kind kind-{{ t.direction }}">{{ t.direction }}</span></td>
+      <td class="num fig">{{ t.qty | qty }}</td>
+      <td class="num fig">{{ t.entry_price | money }}</td>
+      <td class="num fig">{% if t.open %}<span class="sub">open</span>{% else %}{{ t.exit_price | money }}{% endif %}</td>
+      <td class="num fig {{ t.pnl | tone }}">{% if t.open and t.exit_qty == 0 %}—{% else %}{{ t.pnl | signed }} <span class="sub">{{ t.pnl_pct | pct }}</span>{% endif %}</td>
+      <td class="num fig">{{ t.hold_sec | duration }}</td>
+      <td>{{ t.strategy }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if trades.trips | length > 100 %}<p class="empty">Showing the latest 100 of {{ trades.trips | length }} trades.</p>{% endif %}
+{% else %}
+<p class="empty">No trades yet. A trade appears here once an order fills, and counts as closed when the position is back to zero.</p>
+{% endif %}

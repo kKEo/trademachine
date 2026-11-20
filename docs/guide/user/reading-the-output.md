@@ -42,7 +42,7 @@ Two things to know up front: the timestamps are in **your computer's local time*
 | `engine stopped` | Clean exit after `Ctrl-C`, or the data stream ended. |
 | `data stream failed; stopping engine` followed by a traceback | The connection to the provider broke. The program stops; restart it. |
 | `order update stream failed; continuing without push updates` | The broker's order-update feed broke. Trading continues; positions are still re-read before every order. |
-| `KILL SWITCH: halting risk, cancelling open orders, stopping` | Only appears if a program embedding the engine triggered the kill switch; the command-line program never does. |
+| `KILL SWITCH: halting risk, cancelling open orders, stopping` | Someone used the kill switch in the admin console or the terminal view. Trading is halted, unfilled orders are cancelled and the program stops; positions stay open. |
 
 ## Levels
 

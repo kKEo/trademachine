@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ symbol }}{% endblock %}
+{% block head %}
+<script src="/static/vendor/lightweight-charts.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block main %}
+<p class="crumb"><a href="/markets">Markets</a></p>
+<div class="titlebar">
+  <h1>{{ symbol }}</h1>
+  <nav class="segmented" aria-label="Bar size">
+    {% for t in timeframes %}
+    <a href="/markets/{{ symbol }}?tf={{ t }}" {% if t == timeframe %}aria-current="true"{% endif %}>{{ t }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<section class="panel" aria-label="{{ symbol }} price chart">
+  <div class="chart-head">
+    <p id="legend" class="legend fig" aria-live="off">&nbsp;</p>
+    <fieldset class="toggles">
+      <legend class="visually-hidden">Chart layers</legend>
+      <label><input type="checkbox" data-layer="sma10" checked> <span class="swatch" style="--c: var(--sel)"></span>Average 10</label>
+      <label><input type="checkbox" data-layer="sma30" checked> <span class="swatch" style="--c: var(--warn)"></span>Average 30</label>
+      <label><input type="checkbox" data-layer="ema20"> <span class="swatch" style="--c: var(--alt)"></span>EMA 20</label>
+      <label><input type="checkbox" data-layer="signals" checked> Signals</label>
+      <label><input type="checkbox" data-layer="fills" checked> Fills</label>
+    </fieldset>
+  </div>
+  <div id="price-chart" class="chart tall" data-chart="price" data-symbol="{{ symbol }}" data-timeframe="{{ timeframe }}" role="img" aria-label="{{ symbol }} candlesticks on {{ timeframe }} bars with moving averages and signal markers"></div>
+  <h2 class="pane-title">RSI 14</h2>
+  <div id="rsi-chart" class="chart short" role="img" aria-label="{{ symbol }} 14-bar RSI"></div>
+  <p id="chart-note" class="empty" hidden></p>
+</section>
+
+<div class="split">
+  <section class="panel" aria-labelledby="h-now">
+    <h2 id="h-now">Right now</h2>
+    {% if row %}
+    {% set st = row.state %}
+    <dl class="facts">
+      <div><dt>Trend on {{ row.timeframe }} bars</dt>
+        <dd>{% if st.trend == "up" %}Rising: the 10-bar average is {{ st.spread_pct | pct }} above the 30-bar average{% elif st.trend == "down" %}Falling: the 10-bar average is {{ st.spread_pct | pct }} below the 30-bar average{% elif st.trend == "flat" %}Flat{% else %}Not enough bars yet{% endif %}</dd></div>
+      <div><dt>Momentum</dt>
+        <dd>{% if st.rsi is not none %}RSI {{ "%.0f" | format(st.rsi) }}, {{ st.rsi_zone }}{% else %}Not enough bars yet{% endif %}</dd></div>
+      <div><dt>Position</dt>
+        <dd>{% if row.position %}<span class="fig">{{ row.position.qty | qty }}</span> shares at <span class="fig">{{ row.position.avg_price | money }}</span>, open P&amp;L <span class="fig {{ row.position.unrealized_pnl | tone }}">{{ row.position.unrealized_pnl | signed }}</span>{% else %}None{% endif %}</dd></div>
+      <div><dt>Watched by</dt><dd>{{ row.strategies | join(", ") or "No strategy" }}</dd></div>
+    </dl>
+    {% endif %}
+  </section>
+  <section class="panel" aria-labelledby="h-sig">
+    <h2 id="h-sig">Signals for {{ symbol }}</h2>
+    {% include "partials/signals.html" %}
+  </section>
+</div>
+{% endblock %}

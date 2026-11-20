@@ -13,7 +13,7 @@ The suite is small and fast (about one second, no network) and it is the only ga
 
 ## Conventions
 
-- Commands run from the repository root with the virtual environment active (`source .venv/bin/activate`), after `pip install -e ".[alpaca,dev]"`.
+- Commands run from the repository root with the virtual environment active (`source .venv/bin/activate`), after `pip install -e ".[alpaca,console,tui,dev]"`.
 - Tests are named as `tests/test_engine.py::test_warmup_uses_history`; `scripts/docs-check.py` fails if a name on these pages stops existing.
 - "Green" means `pytest -q` ends with `passed` and nothing else; "red" means at least one failure.
 - Test helpers live in `tests/helpers.py` and are imported with `from helpers import ...`.

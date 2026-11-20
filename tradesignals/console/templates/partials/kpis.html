@@ -1,0 +1,30 @@
+{% if kpis.has_account %}
+<dl class="figures">
+  <div class="lead">
+    <dt>Equity <span class="unit">{{ kpis.currency }}</span></dt>
+    <dd class="fig">{{ kpis.equity | money }}</dd>
+  </div>
+  <div>
+    <dt>Today</dt>
+    <dd class="fig {{ kpis.day_pnl | tone }}">{{ kpis.day_pnl | signed }}</dd>
+    <dd class="sub fig {{ kpis.day_pnl | tone }}">{{ kpis.day_pnl_pct | pct }}</dd>
+  </div>
+  <div>
+    <dt>From peak</dt>
+    <dd class="fig {{ kpis.drawdown_pct | tone }}">{{ kpis.drawdown_pct | pct }}</dd>
+    <dd class="sub">this run</dd>
+  </div>
+  <div>
+    <dt>Open P&amp;L</dt>
+    <dd class="fig {{ kpis.unrealized_pnl | tone }}">{{ kpis.unrealized_pnl | signed }}</dd>
+    <dd class="sub">{{ kpis.open_positions }} position{{ "" if kpis.open_positions == 1 else "s" }}</dd>
+  </div>
+  <div>
+    <dt>Invested</dt>
+    <dd class="fig">{{ kpis.exposure | money }}</dd>
+    <dd class="sub fig">{{ kpis.cash | money }} cash</dd>
+  </div>
+</dl>
+{% else %}
+<p class="empty">No broker is connected, so there is no account to show. Start the engine with <code>--broker paper</code> to follow positions and equity.</p>
+{% endif %}

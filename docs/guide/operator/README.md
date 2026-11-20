@@ -8,6 +8,7 @@ This guide is for people who run, configure or change the tradesignals engine: o
 | [Part II: Install and run](install/README.md) | install, look up any environment variable or command-line flag with its default, and set up Alpaca or XTB accounts, feeds and symbols |
 | [Part III: Operate](operate/README.md) | watch a running engine, know what each safety control really does, follow the runbook for start, stop, restart and incidents |
 | [Part IV: Extend](develop/README.md) | add a strategy or a provider, and read the ranked list of known gaps before planning work |
+| [Part V: The admin console](console/README.md) | run the web console or the terminal view, understand how it is attached to the engine and secured, look up a page, an endpoint or a database table |
 | [Appendix](appendix/README.md) | look up a term or an XTB protocol detail |
 
 ## Conventions

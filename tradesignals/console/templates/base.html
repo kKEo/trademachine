@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Console{% endblock %} | tradesignals</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  {% block head %}{% endblock %}
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-mode="{{ status.mode }}" data-halted="{{ 'true' if status.halted else 'false' }}">
+  <a class="skip" href="#main">Skip to content</a>
+  <nav class="rail" aria-label="Console sections">
+    <a class="brand" href="/">tradesignals</a>
+    <ul>
+      {% for key, href, label in nav %}
+      <li><a href="{{ href }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a></li>
+      {% endfor %}
+    </ul>
+    <div class="rail-foot" hx-get="/partials/status" hx-trigger="live-status from:body, live-refresh from:body, every 30s">
+      {% include "partials/status.html" %}
+    </div>
+    {% include "partials/access.html" %}
+  </nav>
+  <div class="desk">
+    <header class="tape" aria-label="Live quotes">
+      <ul id="tape">
+        {% for q in quotes %}
+        <li data-symbol="{{ q.symbol }}">
+          <a href="/markets/{{ q.symbol }}">{{ q.symbol }}</a>
+          <span class="fig" data-field="price">{{ q.price | money }}</span>
+          <span class="fig {{ q.change_pct | tone }}" data-field="change" title="Change since this console session started">{{ q.change_pct | pct }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <span id="link" class="link" data-state="connecting" role="status">Connecting</span>
+    </header>
+    <p id="notice" class="notice" role="status" aria-live="polite" hidden></p>
+    <main id="main">
+      {% block main %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Risk{% endblock %}
+{% block main %}
+<h1>Risk</h1>
+
+<section class="panel" aria-labelledby="h-limits">
+  <h2 id="h-limits">Limits</h2>
+  <div hx-get="/partials/risk" hx-trigger="live-status from:body, live-snapshot from:body, live-refresh from:body">
+    {% include "partials/risk.html" %}
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-controls">
+  <h2 id="h-controls">Controls</h2>
+  {% if not access.configured %}
+  <p class="empty">This console is view only. To halt trading, close positions or stop the engine from here, set <code>CONSOLE_TOKEN</code> in <code>.env</code> and restart the engine.</p>
+  {% elif not access.unlocked %}
+  <p class="empty">Unlock actions with the console token (bottom of the menu) to use these controls.</p>
+  {% else %}
+  <div class="controls">
+    <div class="control">
+      <h3>Halt trading</h3>
+      <p>Stops new and larger positions at once. Strategies keep running and can still exit. Nothing is sold.</p>
+      {% if status.halted %}
+      <form data-action="/api/actions/resume" data-then="reload"><button type="submit" {{ "disabled" if not access.can_trade }}>Resume trading</button></form>
+      {% else %}
+      <form data-action="/api/actions/halt" data-then="reload">
+        <label for="halt-reason">Reason (optional)</label>
+        <div class="row"><input id="halt-reason" name="reason" type="text" maxlength="200"><button type="submit" {{ "disabled" if not access.can_halt }}>Halt trading</button></div>
+      </form>
+      {% endif %}
+    </div>
+    <div class="control">
+      <h3>Close every position</h3>
+      <p>Sells all holdings at market now. Strategies may buy again afterwards unless trading is halted first.</p>
+      <form data-action="/api/actions/flatten">
+        <label for="flatten-confirm">Type {{ confirm_flatten }} to confirm</label>
+        <div class="row"><input id="flatten-confirm" name="confirm" type="text" autocomplete="off" required pattern="{{ confirm_flatten }}"><button type="submit" class="danger" {{ "disabled" if not access.can_trade }}>Close every position</button></div>
+      </form>
+    </div>
+    <div class="control">
+      <h3>Kill switch</h3>
+      <p>Halts trading, cancels open orders and stops the engine. Positions stay open, and this console goes offline until the engine is started again.</p>
+      <form data-action="/api/actions/kill-switch">
+        <label for="kill-confirm">Type {{ confirm_kill }} to confirm</label>
+        <div class="row"><input id="kill-confirm" name="confirm" type="text" autocomplete="off" required pattern="{{ confirm_kill }}"><button type="submit" class="danger">Stop the engine</button></div>
+      </form>
+    </div>
+  </div>
+  {% if access.trade_blocked %}<p class="empty">{{ access.trade_blocked }} Halting and the kill switch still work.</p>{% endif %}
+  {% endif %}
+</section>
+
+{% if limits and access.trading %}
+<section class="panel" aria-labelledby="h-edit">
+  <h2 id="h-edit">Change limits</h2>
+  <form class="ticket" data-action="/api/actions/limits" data-then="reload" aria-label="Risk limits">
+    {% for l in limits %}
+    <label>{{ l.label }}
+      <input type="number" name="{{ l.name }}" value="{{ l.value | qty | replace(',', '') }}" step="{{ 1 if l.whole else 'any' }}" title="Between {{ l.min | qty }} and {{ l.max | qty }}">
+    </label>
+    {% endfor %}
+    <button type="submit">Save limits</button>
+  </form>
+  <p class="empty">Changes apply from the next order and last until the engine restarts; the starting values come from <code>.env</code>. Every change is recorded below.</p>
+</section>
+{% endif %}
+
+<section class="panel" aria-labelledby="h-audit">
+  <h2 id="h-audit">Actions taken from the console</h2>
+  <div hx-get="/partials/audit" hx-trigger="live-audit from:body, live-refresh from:body">
+    {% include "partials/audit.html" %}
+  </div>
+</section>
+{% endblock %}

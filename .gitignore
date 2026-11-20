@@ -10,6 +10,7 @@ __pycache__/
 htmlcov/
 site/
 *.db
+data/
 *.sqlite*
 *.log
 .DS_Store

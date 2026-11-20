@@ -24,7 +24,7 @@ Every restart is a cold process:
 
 ## At the open
 
-The warm-up window is three times the strategy's need, measured backwards from the wall clock (`tradesignals/engine.py:135`). A 1-minute `sma_cross` started within 31 minutes of the open has fewer than 31 bars of today and starts cold; it begins signalling about half an hour later. A 5-minute `rsi_reversion` reaches into the previous session and is ready at once. The first live bar after warm-up may be partial because warm-up history can include the bucket in progress.
+The warm-up window is three times the strategy's need, measured backwards from the wall clock (`tradesignals/engine.py:408`). A 1-minute `sma_cross` started within 31 minutes of the open has fewer than 31 bars of today and starts cold; it begins signalling about half an hour later. A 5-minute `rsi_reversion` reaches into the previous session and is ready at once. The first live bar after warm-up may be partial because warm-up history can include the bucket in progress.
 
 ## When the data stream dies
 
@@ -42,7 +42,7 @@ When only the order-update stream dies (`order update stream failed; continuing 
 ## Upgrade
 
 ```bash
-git pull && pip install -e ".[alpaca,dev]" && pytest -q
+git pull && pip install -e ".[alpaca,console,tui,dev]" && pytest -q
 ```
 
 No data migration exists because no data is stored.
@@ -57,14 +57,14 @@ Nothing to back up: `.env` is the only state, and the broker holds the positions
 |---|---|---|---|
 | `RuntimeError: ALPACA_API_KEY / ALPACA_SECRET_KEY not set` | `.env` not found (non-editable install) or variables empty | `tradesignals/providers/alpaca.py:66-68`, [Install](../install/install.md) | export the variables or reinstall editable |
 | `ValueError: XTB_DEMO='...' is not a boolean` | bad boolean spelling | `tradesignals/config.py:15` | use `true`/`false` |
-| `refusing --execute: ... LIVE account` | flags point at live | `tradesignals/cli.py:83-95` | set the paper flag, or pass `--allow-live` on purpose |
+| `refusing --execute: ... LIVE account` | flags point at live | `tradesignals/cli.py:108-120` | set the paper flag, or pass `--allow-live` on purpose |
 | `warmup ... failed: ...` on Alpaca | feed or plan issue, or history endpoint error | `tradesignals/providers/alpaca.py:150` | check `ALPACA_FEED`; the run continues cold |
 | `engine running`, then silence in market hours | market closed, wrong symbol/suffix, or Alpaca stream task ended | `tradesignals/providers/xtb.py:162` (suffix), `tradesignals/providers/alpaca.py:135` (stream task) | verify symbol; on Alpaca check the feed; restart |
-| Every signal is `RISK REJECT ... halted` | loss halt latched | `tradesignals/risk.py:69-72` | close positions in the app, restart |
-| `RISK REJECT sell ... notional` | sale blocked by the notional cap | `tradesignals/risk.py:57` | raise the cap for the exit, restart, or close in the app |
-| `RISK REJECT ... stale quote` persistently | feed stalled or thin instrument | `tradesignals/risk.py:55` | restart; consider a larger `RISK_MAX_QUOTE_AGE_SEC` |
-| Duplicate order after a slow fill | orders in flight are invisible | `tradesignals/engine.py:223-235` | reduce signal frequency (larger timeframe); known gap |
+| Every entry is `RISK REJECT ... halted` | loss halt latched | `tradesignals/risk.py:76-84` | exits still pass; resume from the console's Risk page once you have looked, or restart |
+| `RISK REJECT sell ... notional` | sale blocked by the notional cap | `tradesignals/risk.py:65` | raise the cap for the exit, restart, or close in the app |
+| `RISK REJECT ... stale quote` persistently | feed stalled or thin instrument | `tradesignals/risk.py:63` | restart; consider a larger `RISK_MAX_QUOTE_AGE_SEC` |
+| A signal is a `no-op` although the position looks wrong | an earlier order for the symbol is still in flight and already counted | `tradesignals/engine.py:536` | wait for the fill, or cancel the open order on the console's Portfolio page |
 | `TypeError` from Alpaca positions | `None` numeric fields | `tradesignals/providers/alpaca.py:232-236` | fixed by `_opt_float`; report if seen again |
 | `xtb ping failed` every 10 s | main socket dead | `tradesignals/providers/xtb.py:137-143` | restart; no reconnect exists |
 | Process will not exit on `Ctrl-C` | XTB logout blocked on `recv` | `XtbSession.close()` | `SIGKILL`; nothing is lost |
-| Windows: error about signal handlers at start | unsupported platform | `tradesignals/cli.py:135` | use WSL |
+| Windows: error about signal handlers at start | unsupported platform | `tradesignals/cli.py:189` | use WSL |

@@ -1,0 +1,44 @@
+{% if running %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Strategy</th>
+      <th scope="col">Symbols</th>
+      <th scope="col">Bars</th>
+      <th scope="col">Settings</th>
+      <th scope="col">State</th>
+      <th scope="col"><span class="visually-hidden">Actions</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for st in running %}
+    <tr>
+      <th scope="row"><a href="/signals?strategy={{ st.name }}">{{ st.id }}</a></th>
+      <td>{% for sym in st.symbols %}<a href="/markets/{{ sym }}">{{ sym }}</a>{{ ", " if not loop.last }}{% endfor %}</td>
+      <td class="fig">{{ st.timeframe }}</td>
+      <td class="fig">{% for k, v in st.params.items() %}<span class="k">{{ k }}</span> {{ v | qty }}{{ ", " if not loop.last }}{% else %}<span class="sub">defaults</span>{% endfor %}</td>
+      <td>{% if st.paused %}<span class="outcome warn">Paused</span>{% else %}<span class="outcome ok">Trading</span>{% endif %}</td>
+      <td class="num">
+        {% if access.trading %}
+        <div class="inline-actions">
+          <form data-action="/api/actions/strategies/{{ 'resume' if st.paused else 'pause' }}">
+            <input type="hidden" name="id" value="{{ st.id }}">
+            <button type="submit" class="quiet">{{ "Resume" if st.paused else "Pause" }}</button>
+          </form>
+          <details class="confirm">
+            <summary>Remove</summary>
+            <form data-action="/api/actions/strategies/remove">
+              <input type="hidden" name="id" value="{{ st.id }}">
+              <button type="submit" class="danger">Remove {{ st.id }}</button>
+            </form>
+          </details>
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No strategy is running, so no signals will be raised. Start one below.</p>
+{% endif %}

@@ -9,7 +9,7 @@ A provider is one or two classes behind the interfaces in `tradesignals/interfac
 | Member | Do this |
 |---|---|
 | `name` | short lowercase id, used in `Tick.source`/`Bar.source` and logs |
-| `pushes_bars` | set `True` if the provider streams bars itself; the engine then never builds bars from ticks for you (`tradesignals/engine.py:75`) |
+| `pushes_bars` | set `True` if the provider streams bars itself; the engine then never builds bars from ticks for you (`tradesignals/engine.py:118`) |
 | `connect()` / `close()` | open and close sockets; `close()` must be safe to call after a failed `connect()` |
 | `subscribe(symbols)` | subscribe once; the engine calls it once with the union of all strategies' symbols |
 | `stream()` | async generator of canonical `Tick` and `Bar` events; let exceptions propagate (the engine logs them and stops) rather than swallowing them |
@@ -20,7 +20,7 @@ A provider is one or two classes behind the interfaces in `tradesignals/interfac
 | Member | Do this |
 |---|---|
 | `name` | as above |
-| `paper` | set from your configuration; **leave it `False` unless you know the account is paper/demo**, because the CLI's live guard reads it (`tradesignals/cli.py:83`) |
+| `paper` | set from your configuration; **leave it `False` unless you know the account is paper/demo**, because the CLI's live guard reads it (`tradesignals/cli.py:108`) |
 | `submit_order(req)` | translate `OrderRequest` (market or limit, DAY or GTC, `client_order_id`) and return an `Order` with the best status you can know at return time |
 | `cancel_order(id)` / `cancel_all()` | cancel pending orders; document the scope (own orders vs account-wide) |
 | `get_order(id)` | fresh status |

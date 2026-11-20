@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Signals{% endblock %}
+{% block main %}
+<div class="titlebar">
+  <h1>Signals</h1>
+  <a class="button" href="/signals.csv{% if query %}?{{ query }}{% endif %}" download>Download CSV</a>
+</div>
+<p class="lede">Every signal the strategies raised, what the engine did with it, and what the price did next. Moves are coloured from the signal's side: green when a long was followed by a rise, or an exit by a fall.</p>
+
+<form class="filters" method="get" action="/signals" aria-label="Filter signals">
+  <label>Strategy
+    <select name="strategy">
+      <option value="">All</option>
+      {% for name in report.facets.strategies %}<option value="{{ name }}" {{ "selected" if chosen.strategy == name }}>{{ name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Symbol
+    <select name="symbol">
+      <option value="">All</option>
+      {% for name in report.facets.symbols %}<option value="{{ name }}" {{ "selected" if chosen.symbol == name }}>{{ name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Signal
+    <select name="kind">
+      <option value="">All</option>
+      {% for value, label in [("long", "Long"), ("flat", "Flat"), ("short", "Short")] %}<option value="{{ value }}" {{ "selected" if chosen.kind == value }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Result
+    <select name="outcome">
+      <option value="">All</option>
+      {% for value, label in [("order", "Order sent"), ("no_op", "Nothing to do"), ("risk_reject", "Blocked by risk"), ("submit_failed", "Order failed"), ("none", "Not traded")] %}<option value="{{ value }}" {{ "selected" if chosen.outcome == value }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>From <input type="date" name="day_from" value="{{ chosen.day_from }}"></label>
+  <label>To <input type="date" name="day_to" value="{{ chosen.day_to }}"></label>
+  <label>Sessions
+    <select name="scope">
+      <option value="">All sessions</option>
+      <option value="run" {{ "selected" if chosen.scope == "run" }}>This session</option>
+    </select>
+  </label>
+  <button type="submit">Apply filters</button>
+  {% if filtered %}<a href="/signals">Clear filters</a>{% endif %}
+</form>
+
+<div hx-get="/partials/signal-report{% if query %}?{{ query }}{% endif %}" hx-trigger="live-signal from:body throttle:3s, live-refresh from:body">
+  {% include "partials/signal_report.html" %}
+</div>
+{% endblock %}

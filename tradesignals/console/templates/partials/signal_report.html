@@ -1,0 +1,114 @@
+{% set o = report.outcomes %}
+{% set all = report.overall %}
+<section class="band" aria-label="Signal summary">
+  <dl class="figures">
+    <div class="lead">
+      <dt>Signals</dt>
+      <dd class="fig">{{ report.count }}</dd>
+    </div>
+    <div>
+      <dt>Orders sent</dt>
+      <dd class="fig">{{ o.get("order", 0) }}</dd>
+    </div>
+    <div>
+      <dt>Blocked by risk</dt>
+      <dd class="fig {{ 'warn-text' if o.get('risk_reject', 0) }}">{{ o.get("risk_reject", 0) }}</dd>
+    </div>
+    <div>
+      <dt>Orders failed</dt>
+      <dd class="fig {{ 'down' if o.get('submit_failed', 0) }}">{{ o.get("submit_failed", 0) }}</dd>
+    </div>
+    {% if all %}
+    {% for h in report.horizons %}
+    <div>
+      <dt>Correct after {{ h }} bar{{ "" if h == 1 else "s" }}</dt>
+      <dd class="fig">{% if all.hit_rate[h] is not none %}{{ "%.0f" | format(all.hit_rate[h]) }}%{% else %}—{% endif %}</dd>
+      <dd class="sub fig {{ all.avg_edge[h] | tone }}">{{ all.avg_edge[h] | pct }} average</dd>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </dl>
+</section>
+
+{% if report.by_strategy %}
+<section class="panel" aria-labelledby="h-strat">
+  <h2 id="h-strat">By strategy</h2>
+  <div>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Strategy</th>
+          <th scope="col" class="num">Signals</th>
+          <th scope="col" class="num">Orders</th>
+          <th scope="col" class="num">Blocked</th>
+          {% for h in report.horizons %}<th scope="col" class="num" title="Share of signals the market agreed with after {{ h }} bar(s), and the average move in the signal's favour">Correct after {{ h }}</th>{% endfor %}
+          <th scope="col" class="num">Closed trades</th>
+          <th scope="col" class="num">Won</th>
+          <th scope="col" class="num">Realised P&amp;L</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, g in report.by_strategy.items() %}
+        <tr>
+          <th scope="row"><a href="/signals?strategy={{ name }}">{{ name }}</a></th>
+          <td class="num fig">{{ g.signals }}</td>
+          <td class="num fig">{{ g.outcomes.get("order", 0) }}</td>
+          <td class="num fig">{{ g.outcomes.get("risk_reject", 0) }}</td>
+          {% for h in report.horizons %}
+          <td class="num fig">{% if g.hit_rate[h] is not none %}{{ "%.0f" | format(g.hit_rate[h]) }}% <span class="sub {{ g.avg_edge[h] | tone }}">{{ g.avg_edge[h] | pct }}</span>{% else %}—{% endif %}</td>
+          {% endfor %}
+          {% if g.trades %}
+          <td class="num fig">{{ g.trades.trades }}</td>
+          <td class="num fig">{% if g.trades.win_rate is not none %}{{ "%.0f" | format(g.trades.win_rate) }}%{% else %}—{% endif %}</td>
+          <td class="num fig {{ g.trades.pnl | tone }}">{{ g.trades.pnl | signed }}</td>
+          {% else %}
+          <td class="num fig">0</td><td class="num">—</td><td class="num">—</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel" aria-labelledby="h-list">
+  <h2 id="h-list">{% if filtered %}Matching signals{% else %}All signals{% endif %}</h2>
+  {% if rows %}
+  <div>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Time</th>
+          <th scope="col">Symbol</th>
+          <th scope="col">Signal</th>
+          <th scope="col">Strategy</th>
+          <th scope="col">Why</th>
+          <th scope="col">Result</th>
+          <th scope="col" class="num">Price</th>
+          {% for h in report.horizons %}<th scope="col" class="num">After {{ h }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in rows %}
+        <tr>
+          <td class="fig" title="{{ s.ts | stamp }}"><a href="/signals/{{ s.id }}">{{ s.ts | clock }}</a></td>
+          <th scope="row"><a href="/markets/{{ s.symbol }}">{{ s.symbol }}</a> <span class="tag">{{ s.timeframe }}</span></th>
+          <td><span class="kind kind-{{ s.kind }}">{{ s.kind }}</span></td>
+          <td>{{ s.strategy }}</td>
+          <td class="sub">{{ s.reason }}</td>
+          <td>{% include "partials/outcome.html" %}</td>
+          <td class="num fig">{{ s.ref | money }}</td>
+          {% for h in report.horizons %}<td class="num fig {{ s.edge[h] | tone }}">{{ s.returns[h] | pct }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if report.count > rows | length %}<p class="empty">Showing the latest {{ rows | length }} of {{ report.count }}. The CSV download holds all of them.</p>{% endif %}
+  {% elif filtered %}
+  <p class="empty">No signals match these filters. <a href="/signals">Clear filters</a> to see all of them.</p>
+  {% else %}
+  <p class="empty">No signals yet. A strategy speaks up when its condition is met, for example when the fast average crosses the slow one.</p>
+  {% endif %}
+</section>

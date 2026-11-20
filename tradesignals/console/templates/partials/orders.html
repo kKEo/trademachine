@@ -1,0 +1,30 @@
+{% if orders %}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Time</th>
+      <th scope="col">Symbol</th>
+      <th scope="col">Side</th>
+      <th scope="col" class="num">Shares</th>
+      <th scope="col" class="num">Fill price</th>
+      <th scope="col">Status</th>
+      {% if not compact %}<th scope="col">Placed by</th><th scope="col">Broker ref</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in orders %}
+    <tr>
+      <td class="fig" title="{{ o.ts | stamp }}">{{ o.ts | clock }}</td>
+      <th scope="row"><a href="/markets/{{ o.symbol }}">{{ o.symbol }}</a></th>
+      <td><span class="side side-{{ o.side }}">{{ o.side }}</span></td>
+      <td class="num fig">{{ o.filled_qty | qty }}{% if o.filled_qty != o.qty %} / {{ o.qty | qty }}{% endif %}</td>
+      <td class="num fig">{{ o.avg_fill_price | money }}</td>
+      <td><span class="ostatus ostatus-{{ o.status }}">{{ o.status | replace("_", " ") }}</span></td>
+      {% if not compact %}<td>{{ o.origin or "unknown" }}</td><td class="fig sub">{{ o.source }} {{ o.id }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No orders yet.{% if status.mode == "signal-only" %} The engine is in signals-only mode; start it with <code>--execute</code> to trade.{% endif %}</p>
+{% endif %}

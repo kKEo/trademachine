@@ -1,0 +1,17 @@
+<div class="access">
+  {% if not access.configured %}
+  <p class="sub" title="Set CONSOLE_TOKEN in .env and restart the engine to enable actions.">View only</p>
+  {% elif access.unlocked %}
+  <form data-action="/lock" data-then="reload">
+    <button type="submit" class="quiet">Lock actions</button>
+  </form>
+  {% else %}
+  <form data-action="/unlock" data-then="reload">
+    <label for="unlock-token">Console token</label>
+    <div class="row">
+      <input id="unlock-token" name="token" type="password" autocomplete="off" required>
+      <button type="submit">Unlock</button>
+    </div>
+  </form>
+  {% endif %}
+</div>

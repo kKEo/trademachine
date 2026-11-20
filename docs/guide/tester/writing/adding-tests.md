@@ -27,7 +27,7 @@ This page tells you which kind of test to write for which kind of change, the co
 - **Assert exact values**, not just "something happened": the index of each signal, the reject string, the tuple of position fields.
 - **Log assertions** use `caplog.at_level(level, logger="tradesignals.<module>")` and match on `r.getMessage()`.
 - **Helpers go in `tests/helpers.py`**; fakes that only one file needs stay in that file.
-- **Pin a known gap** when you cannot fix it: a test that documents current (wrong) behaviour with a docstring pointing at the known-gaps page is better than silence (`tests/test_risk.py::test_halted_also_blocks_position_reducing_orders`).
+- **Pin a known gap** when you cannot fix it: a test that documents current (wrong) behaviour with a docstring pointing at the known-gaps page is better than silence (the exit-policy gap was pinned this way until it was fixed; its successor is `tests/test_risk.py::test_halt_blocks_new_risk_but_never_an_exit`).
 
 ## Adding a file
 

@@ -8,8 +8,10 @@ This chapter maps the code: which module owns what, the canonical models everyth
 
 | Path | Owns |
 |---|---|
-| `tradesignals/cli.py` | Argument parser, `.env` loading, logging setup, the live-account guard, SIGINT/SIGTERM handling, wiring of one strategy into one engine |
-| `tradesignals/engine.py` | `SignalEngine`: lifecycle, warm-up, event loop, signal emission, execution, broker state cache, kill switch |
+| `tradesignals/cli.py` | Argument parser, `.env` loading, logging setup, the live-account guard, SIGINT/SIGTERM handling, wiring of one strategy into one engine, and of the event bus, the store and the console when `--db` or `--console` is given |
+| `tradesignals/engine.py` | `SignalEngine`: lifecycle, warm-up, event loop, signal emission, execution, orders in flight, broker state cache, kill switch, operator controls (halt, flatten, manual orders, limits, strategies), publishing to the event bus |
+| `tradesignals/events.py` | `EventBus` and the event dataclasses the engine publishes; standard library only |
+| `tradesignals/store.py`, `tradesignals/analytics.py`, `tradesignals/console/`, `tradesignals/tui.py` | persistence, analysis and the admin console; none of them is imported by the engine. See [The admin console](../console/README.md) |
 | `tradesignals/bars.py` | `bucket_start()` and `BarAggregator`: ticks and finer bars become bars of the strategy's timeframe |
 | `tradesignals/indicators.py` | Incremental `SMA`, `EMA` (unused by the built-in strategies) and Wilder `RSI` |
 | `tradesignals/strategies/` | `Strategy` base class, `SmaCross`, `RsiReversion`, and the `REGISTRY` the CLI reads |
@@ -83,4 +85,4 @@ The invariants that matter:
 
 1. Adapters emit only canonical models with canonical symbols.
 2. Strategies are pure: `on_bar(bar) -> Signal | None`, no I/O, no broker access.
-3. `engine.py` is the only module that submits orders, and when a `RiskManager` is present every order passes `check()` first. The CLI always passes one when a broker is named (`tradesignals/cli.py:118`); a program embedding the engine may pass `risk=None` and bypass the checks.
+3. `engine.py` is the only module that submits orders, and when a `RiskManager` is present every order passes `check()` first. The CLI always passes one when a broker is named (`tradesignals/cli.py:143`); a program embedding the engine may pass `risk=None` and bypass the checks.

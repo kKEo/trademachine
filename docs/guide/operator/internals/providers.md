@@ -26,7 +26,7 @@ This chapter describes the three adapters side by side: the in-memory reference 
 These are the reference semantics: if a real adapter behaves differently from the engine's point of view, the adapter is probably wrong.
 
 - `ReplayProvider(events, history=None, delay=0.0, pushes_bars=False)` yields events in the order given, sleeping `delay` seconds before each one. `subscribe()` only records the symbols; it does not filter. `get_bars()` honours timeframe, `start` and an inclusive `end`.
-- `PaperBroker(cash=100_000.0)` (`tradesignals/providers/fake.py:83`) fills market orders instantly at the last price fed through `mark(symbol, price)`. The CLI feeds marks from every tick through the engine's `on_tick` callback (`tradesignals/cli.py:98-108`). Bars never update marks, so a bar-only replay cannot fill orders.
+- `PaperBroker(cash=100_000.0)` (`tradesignals/providers/fake.py:83`) fills market orders instantly at the last price fed through `mark(symbol, price)`. The CLI feeds marks from every tick through the engine's `on_tick` callback (`tradesignals/cli.py:123-133`). Bars never update marks, so a bar-only replay cannot fill orders.
 - Limit orders fill at the mark only if marketable (buy: mark ≤ limit; sell: mark ≥ limit, `tradesignals/providers/fake.py:104`); otherwise the order is returned `REJECTED` with nothing changed.
 - Positions are netted per symbol (`tradesignals/providers/fake.py:111-128`): adding averages the cost basis, reducing or closing keeps it, flipping through zero restarts it at the fill price. A SELL with no position opens a short and credits the proceeds.
 - `cancel_order()` and `cancel_all()` are no-ops. `get_order()` raises `KeyError` for an unknown id. Order ids are 8 hex characters.

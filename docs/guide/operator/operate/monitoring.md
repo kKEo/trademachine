@@ -1,10 +1,10 @@
 # Monitoring and logs
 
-The engine has no metrics endpoint, no health check and no persistence; the log is the only window into it. This chapter lists every line it can write, what it means, and how to watch a process from outside.
+Without the admin console the log is the only window into the engine. This chapter lists every line it can write, what it means, and how to watch a process from outside. With `--console` there is a second window; see [The admin console](../console/README.md).
 
 ## Logging setup
 
-`configure_logging()` (`tradesignals/cli.py:76-80`) calls `logging.basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")`, which writes to **stderr** with **local-time** timestamps, and sets the `tradesignals` logger to DEBUG when `-v` is given. Third-party loggers (`websockets`, `alpaca`) inherit the root's INFO. That split is deliberate: at DEBUG the websockets library logs every frame it sends, which for XTB includes the login message with the password (verified against websockets source). `-v` is therefore safe to use with real credentials.
+`configure_logging()` (`tradesignals/cli.py:101-105`) calls `logging.basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")`, which writes to **stderr** with **local-time** timestamps, and sets the `tradesignals` logger to DEBUG when `-v` is given. Third-party loggers (`websockets`, `alpaca`) inherit the root's INFO. That split is deliberate: at DEBUG the websockets library logs every frame it sends, which for XTB includes the login message with the password (verified against websockets source). `-v` is therefore safe to use with real credentials.
 
 Loggers in use: `tradesignals.cli`, `tradesignals.engine`, `tradesignals.alpaca`, `tradesignals.xtb`. There is no file handler and no rotation; redirect stderr (`2> session.log`) or let the service manager capture it.
 
@@ -18,20 +18,20 @@ Loggers in use: `tradesignals.cli`, `tradesignals.engine`, `tradesignals.alpaca`
 | engine | INFO | `warmup <strategy>/<symbol>: N bars` | warm-up delivered at least `warmup_bars` bars |
 | engine | WARNING | `warmup <strategy>/<symbol>: only N of M bars available; strategy starts cold` | not enough history; strategy silent until it has seen M live bars |
 | engine | WARNING | `warmup <strategy>/<symbol> failed: <error>` | `get_bars()` raised; cold start |
-| engine | INFO | `engine running: symbols=[...] strategies=[...] execute=<bool> qty=<float>` | subscribed; event loop running (`tradesignals/engine.py:93`) |
+| engine | INFO | `engine running: symbols=[...] strategies=[...] execute=<bool> qty=<float>` | subscribed; event loop running (`tradesignals/engine.py:139`) |
 | engine | DEBUG | `<symbol>: provider pushes bars; ticks no longer build bars for it` | safety-net switch for an undeclared bar-pushing provider |
-| engine | INFO | `SIGNAL <strategy> <symbol> <kind> strength=<f> <reason>` | a signal (`tradesignals/engine.py:215`) |
-| engine | INFO | `no-op: <symbol> already at <qty>` | target equals held position (`tradesignals/engine.py:235`) |
-| engine | WARNING | `RISK REJECT <side> <qty> <symbol>: <reason>` | a risk rule fired (`tradesignals/engine.py:248`) |
-| engine | ERROR | `submit failed for <OrderRequest>` + traceback | broker raised on submit; signal dropped (`tradesignals/engine.py:253`) |
-| engine | INFO | `ORDER <source> <side> <qty> <symbol> -> <status> (<id>)` | order accepted by the adapter (`tradesignals/engine.py:257`) |
+| engine | INFO | `SIGNAL <strategy> <symbol> <kind> strength=<f> <reason>` | a signal (`tradesignals/engine.py:501`) |
+| engine | INFO | `no-op: <symbol> already at <qty>` | target equals held position (`tradesignals/engine.py:525`) |
+| engine | WARNING | `RISK REJECT <side> <qty> <symbol>: <reason>` | a risk rule fired (`tradesignals/engine.py:599`) |
+| engine | ERROR | `submit failed for <OrderRequest>` + traceback | broker raised on submit; signal dropped (`tradesignals/engine.py:607`) |
+| engine | INFO | `ORDER <source> <side> <qty> <symbol> -> <status> (<id>)` | order accepted by the adapter (`tradesignals/engine.py:617`) |
 | engine | INFO | `ORDER UPDATE <symbol> <side> <status> filled=<qty> @ <price>` | push or polled update |
-| engine | WARNING | `broker state refresh failed: <error>` | positions/account not re-read; stale values in use (`tradesignals/engine.py:272`) |
+| engine | WARNING | `broker state refresh failed: <error>` | positions/account not re-read; stale values in use (`tradesignals/engine.py:633`) |
 | engine | ERROR | `error handling <event>` + traceback | one event raised inside a strategy, callback or aggregator; skipped |
-| engine | ERROR | `data stream failed; stopping engine` + traceback | provider stream raised; shutdown follows (`tradesignals/engine.py:169`) |
-| engine | ERROR | `order update stream failed; continuing without push updates` + traceback | broker update stream raised; trading continues (`tradesignals/engine.py:292`) |
+| engine | ERROR | `data stream failed; stopping engine` + traceback | provider stream raised; shutdown follows (`tradesignals/engine.py:442`) |
+| engine | ERROR | `order update stream failed; continuing without push updates` + traceback | broker update stream raised; trading continues (`tradesignals/engine.py:657`) |
 | engine | WARNING | `KILL SWITCH: halting risk, cancelling open orders, stopping` | `kill_switch()` was called by an embedding program |
-| engine | INFO | `engine stopped` | shutdown complete (`tradesignals/engine.py:114`) |
+| engine | INFO | `engine stopped` | shutdown complete (`tradesignals/engine.py:169`) |
 | alpaca | INFO | `alpaca data: feed=<iex\|sip> symbols=[...]` | stream subscribed |
 | alpaca | INFO | `alpaca broker connected (paper=<bool>)` | trade-update stream started |
 | xtb | INFO | `XTB logged in (<url>, demo=<bool>)` | login done, stream socket open |
@@ -42,12 +42,23 @@ Loggers in use: `tradesignals.cli`, `tradesignals.engine`, `tradesignals.alpaca`
 
 Lines with a traceback are the ones to alert on. `RISK REJECT` is expected in normal operation; a *burst* of them (every signal rejected) usually means a limit is mis-set or the manager is halted.
 
-## What is not observable
+## What the log does not show, and where to look instead
 
-- Startup configuration (risk limits, feed, qty) is only partly logged; `engine running` carries symbols, strategies, execute and qty, the adapters log feed and paper mode, risk limits are not logged.
-- Signals and orders are not persisted; `engine.signals` and `engine.orders` are in-memory lists.
-- There is no heartbeat. A silent process is indistinguishable from a healthy one outside market hours.
-- The number of late events dropped by an aggregator (`BarAggregator.dropped_late`) is counted but not logged.
+Run the engine with `--console` (or at least `--db`) and most of what used to be invisible has a place:
+
+| Question | Where |
+|---|---|
+| Which signals fired, and what became of each? | console, Signals page; table `signals` joined with `signal_outcomes` |
+| Which orders were sent, and how did they fill? | console, Orders page; tables `orders` and `order_updates` |
+| How has equity moved? | console, Overview; table `equity_snapshots` (one row every ten seconds and after each fill) |
+| Is the engine alive, and how old is each quote? | console, System page (health); the engine publishes a heartbeat every ten seconds |
+| Were late market events dropped, or events lost to a slow listener? | console, System page (`BarAggregator.dropped_late` summed; drops per event-bus subscriber) |
+| What did an operator do from the console? | console, Risk or System page; table `audit_log` |
+| Which settings are in effect? | console, System page; secrets are shown only as set or not set |
+
+Still true without the console: startup configuration is only partly logged (`engine running` carries symbols, strategies, execute and qty; the adapters log feed and paper mode; risk limits are not logged), and there is no metrics endpoint for an external monitor to scrape.
+
+New log lines since the console exists: `persisting to <path> (run <id>)`, `console: http://127.0.0.1:<port> (...)`, `console server stopped: ... (the engine keeps running)`, `HALT: <reason>`, `RESUME: trading halt cleared`, `FLATTEN: N order(s) sent`, `CANCEL requested for order <id>`, `RISK LIMITS changed: ...`, `STRATEGY <id> added|paused|resumed|removed`, `subscriber <name> is slow: N events dropped so far`, `could not persist N events; they are lost`.
 
 ## Watching from outside
 
